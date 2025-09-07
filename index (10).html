@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food-Based Calorie Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Changelog: 
+         - Mobile-first responsive layout with Tailwind CDN
+         - Accessibility features with ARIA roles
+         - Comprehensive food search and meal tracking UI
+    -->
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-900">Food-Based Calorie Calculator</h1>
+                <button class="text-sm text-blue-600 hover:text-blue-800 underline" onclick="window.open('#', '_blank')">
+                    Open Body-based Calculator
+                </button>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">Search foods, track meals, and monitor your daily nutrition</p>
+        </div>
+    </header>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-50" aria-live="polite"></div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- Left/Main Content -->
+            <div class="lg:col-span-3 space-y-6">
+
+                <!-- Search Section -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="relative">
+                        <label for="foodSearch" class="block text-sm font-medium text-gray-700 mb-2">
+                            Search Foods
+                        </label>
+                        <input
+                            type="text"
+                            id="foodSearch"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Type to search foods, meals, or brands..."
+                            autocomplete="off"
+                            role="combobox"
+                            aria-expanded="false"
+                            aria-haspopup="listbox"
+                            aria-label="Search for foods"
+                        />
+
+                        <!-- Suggestions Dropdown -->
+                        <div id="suggestions" class="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto hidden" role="listbox">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex gap-2">
+                        <button id="btnAddCustom" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500">
+                            Add Custom Food
+                        </button>
+                        <button id="btnImportMeal" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500">
+                            Import JSON
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Meal List -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Meal</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Protein</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carbs</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fat</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mealTbody" class="bg-white divide-y divide-gray-200">
+                                <tr id="emptyMealRow">
+                                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
+                                        No items added yet. Search and add foods to get started.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="space-y-6">
+
+                <!-- Totals Card -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Nutrition Totals</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Calories</span>
+                            <span id="totalCals" class="font-semibold text-lg text-gray-900">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Protein</span>
+                            <span id="totalProtein" class="font-semibold text-gray-900">0g</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Carbs</span>
+                            <span id="totalCarbs" class="font-semibold text-gray-900">0g</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Fat</span>
+                            <span id="totalFat" class="font-semibold text-gray-900">0g</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TDEE Compare -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">TDEE Comparison</h2>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="tdeeInput" class="block text-sm font-medium text-gray-700 mb-1">
+                                Daily Target Calories
+                            </label>
+                            <input
+                                type="number"
+                                id="tdeeInput"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="e.g., 2000"
+                                min="500"
+                                max="5000"
+                            />
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Progress</span>
+                                <span id="tdeePercent">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div id="tdeeBar" class="h-3 bg-blue-600 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Controls -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4">Export & Actions</h2>
+                    <div class="space-y-3">
+                        <button id="btnDownloadMeal" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            Download Meal PDF
+                        </button>
+                        <button id="btnCopyMeal" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            Copy Meal JSON
+                        </button>
+                        <button id="btnExportMeal" class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                            Export JSON
+                        </button>
+                        <button id="btnClearMeal" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500">
+                            Clear Meal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quantity Modal -->
+    <div id="quantityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-900 mb-4">Add to Meal</h3>
+                <div id="modalFoodInfo" class="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <!-- Food info will be populated here -->
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="modalQuantity" class="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity
+                        </label>
+                        <input
+                            type="number"
+                            id="modalQuantity"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            value="100"
+                            min="0.1"
+                            step="0.1"
+                        />
+                    </div>
+                    <div>
+                        <label for="modalUnit" class="block text-sm font-medium text-gray-700 mb-1">
+                            Unit
+                        </label>
+                        <select id="modalUnit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="g">grams (g)</option>
+                            <option value="ml">milliliters (ml)</option>
+                            <option value="piece">pieces</option>
+                        </select>
+                    </div>
+                    <div id="modalPreview" class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <!-- Preview will be shown here -->
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="modalCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button id="modalConfirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500">
+                        Add to Meal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Food Modal -->
+    <div id="customFoodModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50" role="dialog" aria-modal="true" aria-labelledby="customModalTitle">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 id="customModalTitle" class="text-lg font-semibold text-gray-900 mb-4">Add Custom Food</h3>
+                <form id="customFoodForm" class="space-y-4">
+                    <div>
+                        <label for="customName" class="block text-sm font-medium text-gray-700 mb-1">Food Name</label>
+                        <input type="text" id="customName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="customCalories" class="block text-sm font-medium text-gray-700 mb-1">Calories (per 100g)</label>
+                            <input type="number" id="customCalories" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="0" step="0.1" required>
+                        </div>
+                        <div>
+                            <label for="customProtein" class="block text-sm font-medium text-gray-700 mb-1">Protein (g)</label>
+                            <input type="number" id="customProtein" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="0" step="0.1" required>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="customCarbs" class="block text-sm font-medium text-gray-700 mb-1">Carbs (g)</label>
+                            <input type="number" id="customCarbs" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="0" step="0.1" required>
+                        </div>
+                        <div>
+                            <label for="customFat" class="block text-sm font-medium text-gray-700 mb-1">Fat (g)</label>
+                            <input type="number" id="customFat" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="0" step="0.1" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="customServingGrams" class="block text-sm font-medium text-gray-700 mb-1">Serving Size (grams, optional)</label>
+                        <input type="number" id="customServingGrams" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" min="1" placeholder="e.g., 150">
+                    </div>
+                </form>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="customModalCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button id="customModalConfirm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500">
+                        Add Custom Food
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+                <h3 id="importModalTitle" class="text-lg font-semibold text-gray-900 mb-4">Import Meal JSON</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="importTextarea" class="block text-sm font-medium text-gray-700 mb-1">
+                            Paste JSON Data
+                        </label>
+                        <textarea
+                            id="importTextarea"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            rows="8"
+                            placeholder='Paste your meal JSON here...'
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button id="importModalCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button id="importModalConfirm" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500">
+                        Import Meal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="food-app.js"></script>
+</body>
+</html>
