@@ -1,12 +1,6 @@
 // food-app.js
-// Changelog:
-// - Complete food search with USDA API integration
-// - Local data loading and caching system
-// - Modal-based quantity selection with unit conversion
-// - Real-time nutrition calculations and TDEE comparison
-// - PDF export and JSON import/export functionality
-// - Accessibility features and error handling
-// - Enhanced User Profile and TDEE Calculator System
+// Enhanced Calorie Calculator with Profile System and Advanced Progress Tracking
+// Version 2.0 - Complete Enhancement Implementation
 
 // CONFIG (replace with server proxy in production)
 const USDA_API_KEY = 'MA2uDUaXzLNNDGmRBiRu1p0YxC7cCoBduPhhPnhK';
@@ -29,7 +23,8 @@ let currentEditIndex = -1;
 let searchTimeout = null;
 let currentSuggestionIndex = -1;
 let isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
-let enhancedUserProfile = null; // Added for profile system
+let enhancedUserProfile = null;
+let advancedProgressTracker = null;
 
 // DOM Elements
 const elements = {
@@ -358,6 +353,265 @@ class EnhancedUserProfile {
     }
 }
 
+// =========================
+// Advanced Progress Tracker
+// =========================
+class AdvancedProgressTracker {
+    constructor() {
+        this.currentTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+        this.dailyTargets = { calories: 2000, protein: 150, carbs: 200, fat: 67 };
+        this.progressRings = {};
+        
+        this.initializeProgressRings();
+        this.setupEventListeners();
+    }
+    
+    initializeProgressRings() {
+        const nutrients = ['calories', 'protein', 'carbs', 'fat'];
+        
+        nutrients.forEach(nutrient => {
+            const ring = document.querySelector(`.${nutrient}-card .progress-ring-progress`);
+            if (ring) {
+                const radius = ring.r.baseVal.value;
+                const circumference = radius * 2 * Math.PI;
+                
+                ring.style.strokeDasharray = `${circumference} ${circumference}`;
+                ring.style.strokeDashoffset = circumference;
+                
+                this.progressRings[nutrient] = {
+                    element: ring,
+                    circumference: circumference
+                };
+            }
+        });
+    }
+    
+    setupEventListeners() {
+        // Listen for profile updates
+        window.addEventListener('profileUpdated', (e) => {
+            if (e.detail.targets) {
+                this.updateTargets(e.detail.targets);
+            }
+        });
+        
+        // Listen for meal updates (we'll trigger this manually)
+        window.addEventListener('mealUpdated', (e) => {
+            if (e.detail && e.detail.totals) {
+                this.updateProgress(e.detail.totals);
+            }
+        });
+    }
+    
+    updateTargets(newTargets) {
+        this.dailyTargets = newTargets;
+        
+        // Update target displays
+        const displays = {
+            'target-calories-display': newTargets.calories,
+            'target-protein-display': newTargets.protein,
+            'target-carbs-display': newTargets.carbs,
+            'target-fat-display': newTargets.fat
+        };
+        
+        Object.entries(displays).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+        
+        // Recalculate progress with new targets
+        this.updateProgress(this.currentTotals);
+    }
+    
+    updateProgress(nutritionTotals) {
+        this.currentTotals = nutritionTotals;
+        
+        // Update each nutrient progress
+        this.updateNutrientProgress('calories', nutritionTotals.calories);
+        this.updateNutrientProgress('protein', nutritionTotals.protein);
+        this.updateNutrientProgress('carbs', nutritionTotals.carbs);
+        this.updateNutrientProgress('fat', nutritionTotals.fat);
+        
+        // Update daily summary
+        this.updateDailySummary();
+        
+        // Add achievement animations
+        this.checkAchievements(nutritionTotals);
+    }
+    
+    updateNutrientProgress(nutrient, currentValue) {
+        const target = this.dailyTargets[nutrient];
+        const percentage = Math.min((currentValue / target) * 100, 100);
+        const remaining = Math.max(target - currentValue, 0);
+        
+        // Update ring progress
+        this.animateProgressRing(nutrient, percentage);
+        
+        // Update text values
+        const currentEl = document.getElementById(`current-${nutrient}`);
+        const percentEl = document.getElementById(`${nutrient}-percentage`);
+        const remainingEl = document.getElementById(`${nutrient}-remaining`);
+        
+        if (currentEl) currentEl.textContent = Math.round(currentValue);
+        if (percentEl) percentEl.textContent = Math.round(percentage) + '%';
+        
+        // Update remaining
+        const unit = nutrient === 'calories' ? '' : 'g';
+        if (remainingEl) {
+            remainingEl.textContent = remaining > 0 ? 
+                `${Math.round(remaining)}${unit} remaining` : 
+                `Goal reached! 🎉`;
+        }
+        
+        // Update card styling based on progress
+        this.updateCardStyling(nutrient, percentage);
+    }
+    
+    animateProgressRing(nutrient, percentage) {
+        const ring = this.progressRings[nutrient];
+        if (!ring) return;
+        
+        const offset = ring.circumference - (percentage / 100) * ring.circumference;
+        
+        // Smooth animation
+        ring.element.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+        ring.element.style.strokeDashoffset = offset;
+        
+        // Color coding based on progress
+        let strokeColor;
+        if (percentage >= 90) strokeColor = '#4CAF50'; // Green - excellent
+        else if (percentage >= 70) strokeColor = '#8BC34A'; // Light green - good
+        else if (percentage >= 50) strokeColor = '#FFC107'; // Yellow - okay
+        else if (percentage >= 25) strokeColor = '#FF9800'; // Orange - needs work
+        else strokeColor = '#F44336'; // Red - far from goal
+        
+        ring.element.style.stroke = strokeColor;
+    }
+    
+    updateCardStyling(nutrient, percentage) {
+        const card = document.querySelector(`.${nutrient}-card`);
+        if (!card) return;
+        
+        // Remove existing status classes
+        card.classList.remove('status-excellent', 'status-good', 'status-okay', 'status-needs-work', 'status-far');
+        
+        // Add appropriate status class
+        if (percentage >= 90) card.classList.add('status-excellent');
+        else if (percentage >= 70) card.classList.add('status-good');
+        else if (percentage >= 50) card.classList.add('status-okay');
+        else if (percentage >= 25) card.classList.add('status-needs-work');
+        else card.classList.add('status-far');
+    }
+    
+    updateDailySummary() {
+        const totals = this.currentTotals;
+        const targets = this.dailyTargets;
+        
+        // Calculate overall progress (weighted average)
+        const calorieProgress = (totals.calories / targets.calories) * 100;
+        const proteinProgress = (totals.protein / targets.protein) * 100;
+        const carbsProgress = (totals.carbs / targets.carbs) * 100;
+        const fatProgress = (totals.fat / targets.fat) * 100;
+        
+        const overallProgress = (calorieProgress + proteinProgress + carbsProgress + fatProgress) / 4;
+        
+        // Update overall status
+        let status, statusClass;
+        if (overallProgress >= 90) {
+            status = 'Excellent! 🎯';
+            statusClass = 'excellent';
+        } else if (overallProgress >= 70) {
+            status = 'On Track! 👍';
+            statusClass = 'good';
+        } else if (overallProgress >= 50) {
+            status = 'Making Progress 📈';
+            statusClass = 'okay';
+        } else if (overallProgress >= 25) {
+            status = 'Keep Going! 💪';
+            statusClass = 'needs-work';
+        } else {
+            status = 'Just Started 🌱';
+            statusClass = 'started';
+        }
+        
+        const statusEl = document.getElementById('overall-status');
+        const progressEl = document.getElementById('overall-progress');
+        const caloriesLeftEl = document.getElementById('calories-left');
+        
+        if (statusEl) {
+            statusEl.textContent = status;
+            statusEl.className = `stat-value ${statusClass}`;
+        }
+        if (progressEl) progressEl.textContent = Math.round(overallProgress) + '%';
+        
+        // Update calories left
+        const caloriesLeft = Math.max(targets.calories - totals.calories, 0);
+        if (caloriesLeftEl) caloriesLeftEl.textContent = Math.round(caloriesLeft);
+    }
+    
+    checkAchievements(totals) {
+        const targets = this.dailyTargets;
+        
+        // Check for goal achievements
+        Object.keys(targets).forEach(nutrient => {
+            const current = totals[nutrient];
+            const target = targets[nutrient];
+            const percentage = (current / target) * 100;
+            
+            // Achievement milestones
+            if (percentage >= 100 && !this.hasShownAchievement(nutrient, 100)) {
+                this.showAchievement(`🎉 ${nutrient.toUpperCase()} goal completed!`, 'gold');
+                this.markAchievementShown(nutrient, 100);
+            } else if (percentage >= 75 && !this.hasShownAchievement(nutrient, 75)) {
+                this.showAchievement(`🌟 75% of ${nutrient} goal reached!`, 'silver');
+                this.markAchievementShown(nutrient, 75);
+            } else if (percentage >= 50 && !this.hasShownAchievement(nutrient, 50)) {
+                this.showAchievement(`⭐ Halfway to ${nutrient} goal!`, 'bronze');
+                this.markAchievementShown(nutrient, 50);
+            }
+        });
+    }
+    
+    hasShownAchievement(nutrient, milestone) {
+        const today = new Date().toDateString();
+        const key = `achievement_${nutrient}_${milestone}_${today}`;
+        return localStorage.getItem(key) === 'shown';
+    }
+    
+    markAchievementShown(nutrient, milestone) {
+        const today = new Date().toDateString();
+        const key = `achievement_${nutrient}_${milestone}_${today}`;
+        localStorage.setItem(key, 'shown');
+    }
+    
+    showAchievement(message, type) {
+        const achievement = document.createElement('div');
+        achievement.className = `achievement-popup ${type}`;
+        achievement.innerHTML = `
+            <div class="achievement-content">
+                <div class="achievement-message">${message}</div>
+                <div class="achievement-close">&times;</div>
+            </div>
+        `;
+        
+        document.body.appendChild(achievement);
+        
+        // Animate in
+        setTimeout(() => achievement.classList.add('show'), 100);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            achievement.classList.remove('show');
+            setTimeout(() => achievement.remove(), 300);
+        }, 5000);
+        
+        // Close on click
+        achievement.querySelector('.achievement-close').addEventListener('click', () => {
+            achievement.classList.remove('show');
+            setTimeout(() => achievement.remove(), 300);
+        });
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     initializeElements();
@@ -370,9 +624,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize Enhanced User Profile (TDEE + targets)
     try {
         enhancedUserProfile = new EnhancedUserProfile();
-        if (isDebugMode) console.log('✅ Enhanced User Profile initialized');
+        advancedProgressTracker = new AdvancedProgressTracker();
+        if (isDebugMode) console.log('✅ Enhanced systems initialized');
     } catch (error) {
-        console.error('Failed to initialize Enhanced User Profile:', error);
+        console.error('Failed to initialize enhanced systems:', error);
     }
     
     if (isDebugMode) console.log('🐛 Debug mode enabled');
@@ -728,9 +983,7 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
-   return string.replace(/[.*+?^${}()|[\]\\]/g, '$&');
-
-
+    return string.replace(/[.*+?^${}()|[\]\]/g, '\$&');
 }
 
 function handleSearchKeydown(e) {
@@ -991,6 +1244,11 @@ function updateTotals() {
     elements.totalFat.textContent = totals.fat.toFixed(1) + 'g';
 
     updateTDEEComparison();
+    
+    // Update advanced progress tracker
+    if (advancedProgressTracker) {
+        advancedProgressTracker.updateProgress(totals);
+    }
 }
 
 function updateTDEEComparison() {
@@ -1047,9 +1305,15 @@ async function downloadMealPDF() {
 
         // Header
         pdf.setFontSize(18);
-        pdf.text('Meal Nutrition Report', 20, 20);
+        pdf.text('Enhanced Nutrition Report', 20, 20);
         pdf.setFontSize(10);
         pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+
+        // Profile info if available
+        if (enhancedUserProfile?.userData) {
+            const profile = enhancedUserProfile.userData;
+            pdf.text(`Profile: ${profile.age}y, ${profile.gender}, ${profile.weight}kg, ${profile.height}cm`, 20, 40);
+        }
 
         // Totals
         const totals = mealList.reduce((acc, item) => ({
@@ -1060,25 +1324,25 @@ async function downloadMealPDF() {
         }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
         pdf.setFontSize(12);
-        pdf.text('NUTRITION TOTALS', 20, 45);
+        pdf.text('NUTRITION TOTALS', 20, 55);
         pdf.setFontSize(10);
-        pdf.text(`Calories: ${Math.round(totals.calories)}`, 20, 55);
-        pdf.text(`Protein: ${totals.protein.toFixed(1)}g`, 70, 55);
-        pdf.text(`Carbs: ${totals.carbs.toFixed(1)}g`, 20, 65);
-        pdf.text(`Fat: ${totals.fat.toFixed(1)}g`, 70, 65);
+        pdf.text(`Calories: ${Math.round(totals.calories)}`, 20, 65);
+        pdf.text(`Protein: ${totals.protein.toFixed(1)}g`, 70, 65);
+        pdf.text(`Carbs: ${totals.carbs.toFixed(1)}g`, 20, 75);
+        pdf.text(`Fat: ${totals.fat.toFixed(1)}g`, 70, 75);
 
         // TDEE comparison
         const tdee = parseFloat(elements.tdeeInput.value);
         if (tdee > 0) {
             const percentage = (totals.calories / tdee * 100).toFixed(1);
-            pdf.text(`TDEE Progress: ${percentage}% (${Math.round(totals.calories)}/${tdee} calories)`, 20, 80);
+            pdf.text(`TDEE Progress: ${percentage}% (${Math.round(totals.calories)}/${tdee} calories)`, 20, 85);
         }
 
         // Food items
         pdf.setFontSize(12);
-        pdf.text('FOOD ITEMS', 20, 95);
+        pdf.text('FOOD ITEMS', 20, 100);
         
-        let yPos = 105;
+        let yPos = 110;
         mealList.forEach((item, index) => {
             if (yPos > 270) {
                 pdf.addPage();
@@ -1094,8 +1358,8 @@ async function downloadMealPDF() {
             yPos += 30;
         });
 
-        pdf.save(`meal-nutrition-${new Date().toISOString().split('T')[0]}.pdf`);
-        showToast('PDF downloaded successfully', 'success');
+        pdf.save(`enhanced-nutrition-${new Date().toISOString().split('T')[0]}.pdf`);
+        showToast('Enhanced PDF downloaded successfully', 'success');
     } catch (error) {
         console.error('PDF generation error:', error);
         showToast('Error generating PDF', 'error');
@@ -1125,19 +1389,26 @@ function exportMealJSON() {
     }
 
     try {
-        const jsonData = JSON.stringify(mealList, null, 2);
+        const exportData = {
+            version: '2.0',
+            timestamp: new Date().toISOString(),
+            meals: mealList,
+            profile: enhancedUserProfile?.userData || null
+        };
+        
+        const jsonData = JSON.stringify(exportData, null, 2);
         const blob = new Blob([jsonData], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `meal-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `enhanced-meal-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showToast('Meal exported successfully', 'success');
+        showToast('Enhanced meal data exported successfully', 'success');
     } catch (error) {
         console.error('Export error:', error);
         showToast('Error exporting meal', 'error');
@@ -1222,12 +1493,15 @@ function importMealData() {
     try {
         const importedData = JSON.parse(jsonText);
         
-        if (!Array.isArray(importedData)) {
-            throw new Error('JSON must be an array of meal items');
+        // Handle both old and new format
+        const meals = importedData.meals || (Array.isArray(importedData) ? importedData : []);
+        
+        if (!Array.isArray(meals)) {
+            throw new Error('Invalid meal data format');
         }
 
         // Validate structure
-        const validItems = importedData.filter(item => 
+        const validItems = meals.filter(item => 
             item.name && 
             typeof item.calories === 'number' && 
             typeof item.protein === 'number' && 
@@ -1246,7 +1520,7 @@ function importMealData() {
         persistMeal();
         closeModal(elements.importModal);
         
-        showToast(`Imported ${validItems.length} meal items`, 'success');
+        showToast(`Imported ${validItems.length} meal items successfully`, 'success');
     } catch (error) {
         console.error('Import error:', error);
         showToast(`Import failed: ${error.message}`, 'error');
@@ -1266,8 +1540,17 @@ function closeModal(modal) {
 
 function persistMeal() {
     try {
-        localStorage.setItem('food-calc-meal', JSON.stringify(mealList));
+        const stateData = {
+            meals: mealList,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem('food-calc-meal', JSON.stringify(stateData.meals));
         localStorage.setItem('food-calc-tdee', elements.tdeeInput.value);
+        
+        // Enhanced storage
+        localStorage.setItem('enhanced-calc-state', JSON.stringify(stateData));
+        
     } catch (error) {
         console.error('Error saving meal:', error);
     }
@@ -1275,17 +1558,25 @@ function persistMeal() {
 
 function loadPersistedMeal() {
     try {
-        const savedMeal = localStorage.getItem('food-calc-meal');
-        const savedTdee = localStorage.getItem('food-calc-tdee');
-        
-        if (savedMeal) {
-            mealList = JSON.parse(savedMeal);
-            updateMealDisplay();
+        // Try enhanced storage first
+        const enhancedState = localStorage.getItem('enhanced-calc-state');
+        if (enhancedState) {
+            const state = JSON.parse(enhancedState);
+            mealList = state.meals || [];
+        } else {
+            // Fallback to original storage
+            const savedMeal = localStorage.getItem('food-calc-meal');
+            if (savedMeal) {
+                mealList = JSON.parse(savedMeal);
+            }
         }
         
+        const savedTdee = localStorage.getItem('food-calc-tdee');
         if (savedTdee) {
             elements.tdeeInput.value = savedTdee;
         }
+        
+        updateMealDisplay();
     } catch (error) {
         console.error('Error loading persisted meal:', error);
     }
@@ -1368,6 +1659,7 @@ if (isDebugMode) {
             meals: mealDatabase.length
         },
         cache: Object.keys(localStorage).filter(k => k.includes('usda')),
-        profile: enhancedUserProfile ? enhancedUserProfile.getDailyTargets() : null
+        profile: enhancedUserProfile ? enhancedUserProfile.getDailyTargets() : null,
+        progressTracker: advancedProgressTracker ? 'initialized' : 'not initialized'
     });
 }
