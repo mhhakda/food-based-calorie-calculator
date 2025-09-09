@@ -1296,7 +1296,11 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return string.replace(/[.*+?^${}()|[\]
+
+\\]
+
+/g, '\\$&');
 }
 
 
