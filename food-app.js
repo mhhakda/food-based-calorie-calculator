@@ -983,8 +983,13 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
- return string.replace(/[.*+?^${}()|[\]\\]/g, '$&');
+  return string.replace(/[.*+?^${}()|[\]
+
+\\]
+
+/g, '\\$&');
 }
+
 
 function handleSearchKeydown(e) {
     const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
