@@ -1300,6 +1300,7 @@ function escapeRegex(string) {
 }
 
 
+
 function handleSearchKeydown(e) {
     const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
     
