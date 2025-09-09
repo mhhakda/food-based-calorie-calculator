@@ -1290,15 +1290,15 @@ function getSourceBadge(item) {
 }
 
 function highlightMatch(text, query) {
-    if (!query) return text;
-    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
+  if (!query) return text;
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+  return text.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
 }
 
 function escapeRegex(string) {
- return string.replace(/[.*+?^${}()|[\]\\]/g, '$&');
-
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
 
 function handleSearchKeydown(e) {
     const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
