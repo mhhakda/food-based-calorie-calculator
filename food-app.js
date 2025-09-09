@@ -6,6 +6,7 @@
 // - Real-time nutrition calculations and TDEE comparison
 // - PDF export and JSON import/export functionality
 // - Accessibility features and error handling
+// - Enhanced User Profile and TDEE Calculator System
 
 // CONFIG (replace with server proxy in production)
 const USDA_API_KEY = 'MA2uDUaXzLNNDGmRBiRu1p0YxC7cCoBduPhhPnhK';
@@ -28,6 +29,7 @@ let currentEditIndex = -1;
 let searchTimeout = null;
 let currentSuggestionIndex = -1;
 let isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+let enhancedUserProfile = null; // Added for profile system
 
 // DOM Elements
 const elements = {
@@ -46,6 +48,316 @@ const elements = {
     importModal: null
 };
 
+// =========================
+// Profiles & TDEE (Enhanced)
+// =========================
+class EnhancedUserProfile {
+    constructor() {
+        this.userData = this.loadUserData();
+        this.dailyTargets = null;
+        this.initializeProfile();
+    }
+    
+    initializeProfile() {
+        this.setupEventListeners();
+        if (this.userData) {
+            this.populateForm();
+            this.calculateAndDisplayGoals();
+        }
+    }
+    
+    setupEventListeners() {
+        // Profile toggle - check if elements exist before adding listeners
+        const profileToggle = document.getElementById('profile-toggle');
+        if (profileToggle) {
+            profileToggle.addEventListener('click', () => {
+                this.toggleProfileForm();
+            });
+        }
+        
+        // Form submission
+        const profileForm = document.getElementById('user-profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleProfileSubmission();
+            });
+            
+            // Real-time goal updates
+            const formInputs = profileForm.querySelectorAll('input, select');
+            formInputs.forEach(input => {
+                input.addEventListener('change', () => {
+                    if (this.isFormValid()) {
+                        this.previewGoals();
+                    }
+                });
+            });
+        }
+    }
+    
+    toggleProfileForm() {
+        const formSection = document.getElementById('profile-form-section');
+        const toggleBtn = document.getElementById('profile-toggle');
+        
+        if (formSection && toggleBtn) {
+            formSection.classList.toggle('hidden');
+            toggleBtn.textContent = formSection.classList.contains('hidden') 
+                ? 'Show Profile Setup' 
+                : 'Hide Profile Setup';
+        }
+    }
+    
+    handleProfileSubmission() {
+        const formData = this.collectFormData();
+        
+        if (!this.validateFormData(formData)) {
+            this.showError('Please fill in all required fields');
+            return;
+        }
+        
+        this.userData = formData;
+        this.saveUserData();
+        this.calculateAndDisplayGoals();
+        this.showSuccess('Profile saved! Daily targets calculated.');
+        
+        // Trigger app update
+        window.dispatchEvent(new CustomEvent('profileUpdated', { 
+            detail: { targets: this.dailyTargets } 
+        }));
+    }
+    
+    collectFormData() {
+        const ageEl = document.getElementById('user-age');
+        const genderEl = document.getElementById('user-gender');
+        const weightEl = document.getElementById('user-weight');
+        const heightEl = document.getElementById('user-height');
+        const activityEl = document.getElementById('activity-level');
+        const goalEl = document.querySelector('input[name="goal"]:checked');
+        
+        return {
+            age: ageEl ? parseInt(ageEl.value) : null,
+            gender: genderEl ? genderEl.value : '',
+            weight: weightEl ? parseFloat(weightEl.value) : null,
+            height: heightEl ? parseInt(heightEl.value) : null,
+            activityLevel: activityEl ? parseFloat(activityEl.value) : null,
+            goal: goalEl ? goalEl.value : '',
+            lastUpdated: new Date().toISOString()
+        };
+    }
+    
+    validateFormData(data) {
+        return data.age && data.gender && data.weight && 
+               data.height && data.activityLevel && data.goal;
+    }
+    
+    calculateBMR(age, gender, weight, height) {
+        // Mifflin-St Jeor Equation (more accurate than Harris-Benedict)
+        if (gender === 'male') {
+            return (10 * weight) + (6.25 * height) - (5 * age) + 5;
+        } else {
+            return (10 * weight) + (6.25 * height) - (5 * age) - 161;
+        }
+    }
+    
+    calculateTDEEAndMacros() {
+        if (!this.userData) return null;
+        
+        const { age, gender, weight, height, activityLevel, goal } = this.userData;
+        
+        // Calculate BMR
+        const bmr = this.calculateBMR(age, gender, weight, height);
+        
+        // Calculate TDEE
+        let tdee = bmr * activityLevel;
+        
+        // Apply goal adjustment
+        const goalMultipliers = {
+            'lose': 0.8,    // 20% deficit
+            'maintain': 1.0, // Maintenance
+            'gain': 1.2      // 20% surplus
+        };
+        
+        const adjustedCalories = Math.round(tdee * goalMultipliers[goal]);
+        
+        // Calculate macros (flexible approach)
+        const proteinGrams = Math.round((adjustedCalories * 0.25) / 4); // 25% protein
+        const carbsGrams = Math.round((adjustedCalories * 0.45) / 4);   // 45% carbs
+        const fatGrams = Math.round((adjustedCalories * 0.30) / 9);     // 30% fat
+        
+        return {
+            calories: adjustedCalories,
+            protein: proteinGrams,
+            carbs: carbsGrams,
+            fat: fatGrams,
+            bmr: Math.round(bmr),
+            tdee: Math.round(tdee)
+        };
+    }
+    
+    calculateAndDisplayGoals() {
+        this.dailyTargets = this.calculateTDEEAndMacros();
+        
+        if (!this.dailyTargets) return;
+        
+        // Update display elements if they exist
+        const targetElements = {
+            calories: document.getElementById('target-calories'),
+            protein: document.getElementById('target-protein'),
+            carbs: document.getElementById('target-carbs'),
+            fat: document.getElementById('target-fat'),
+            goals: document.getElementById('calculated-goals')
+        };
+        
+        if (targetElements.calories) targetElements.calories.textContent = this.dailyTargets.calories;
+        if (targetElements.protein) targetElements.protein.textContent = this.dailyTargets.protein + 'g';
+        if (targetElements.carbs) targetElements.carbs.textContent = this.dailyTargets.carbs + 'g';
+        if (targetElements.fat) targetElements.fat.textContent = this.dailyTargets.fat + 'g';
+        
+        // Show calculated goals section
+        if (targetElements.goals) {
+            targetElements.goals.classList.remove('hidden');
+        }
+        
+        // Update existing TDEE input
+        if (elements.tdeeInput) {
+            elements.tdeeInput.value = this.dailyTargets.calories;
+            // Trigger change event to update progress
+            elements.tdeeInput.dispatchEvent(new Event('input'));
+        }
+    }
+    
+    previewGoals() {
+        const tempData = this.collectFormData();
+        if (this.validateFormData(tempData)) {
+            const tempProfile = { ...this };
+            tempProfile.userData = tempData;
+            const previewTargets = tempProfile.calculateTDEEAndMacros.call(tempProfile);
+            
+            if (previewTargets) {
+                // Show preview with visual indication
+                this.showGoalsPreview(previewTargets);
+            }
+        }
+    }
+    
+    showGoalsPreview(targets) {
+        let previewDiv = document.getElementById('goals-preview');
+        if (!previewDiv) {
+            previewDiv = this.createGoalsPreview();
+        }
+        
+        if (previewDiv) {
+            previewDiv.innerHTML = `
+                <div class="preview-goals">
+                    <small>Preview: </small>
+                    <span>${targets.calories} cal</span> • 
+                    <span>${targets.protein}g protein</span> • 
+                    <span>${targets.carbs}g carbs</span> • 
+                    <span>${targets.fat}g fat</span>
+                </div>
+            `;
+            
+            previewDiv.classList.add('show');
+        }
+    }
+    
+    createGoalsPreview() {
+        const form = document.getElementById('user-profile-form');
+        if (form) {
+            const previewDiv = document.createElement('div');
+            previewDiv.id = 'goals-preview';
+            previewDiv.className = 'goals-preview';
+            form.appendChild(previewDiv);
+            return previewDiv;
+        }
+        return null;
+    }
+    
+    populateForm() {
+        if (!this.userData) return;
+        
+        const elements = {
+            age: document.getElementById('user-age'),
+            gender: document.getElementById('user-gender'),
+            weight: document.getElementById('user-weight'),
+            height: document.getElementById('user-height'),
+            activity: document.getElementById('activity-level')
+        };
+        
+        if (elements.age) elements.age.value = this.userData.age || '';
+        if (elements.gender) elements.gender.value = this.userData.gender || '';
+        if (elements.weight) elements.weight.value = this.userData.weight || '';
+        if (elements.height) elements.height.value = this.userData.height || '';
+        if (elements.activity) elements.activity.value = this.userData.activityLevel || '';
+        
+        if (this.userData.goal) {
+            const goalRadio = document.querySelector(`input[name="goal"][value="${this.userData.goal}"]`);
+            if (goalRadio) goalRadio.checked = true;
+        }
+    }
+    
+    isFormValid() {
+        const tempData = this.collectFormData();
+        return this.validateFormData(tempData);
+    }
+    
+    saveUserData() {
+        try {
+            localStorage.setItem('enhancedCalcProfile', JSON.stringify(this.userData));
+        } catch (error) {
+            console.error('Failed to save user data:', error);
+        }
+    }
+    
+    loadUserData() {
+        try {
+            const data = localStorage.getItem('enhancedCalcProfile');
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('Failed to load user data:', error);
+            return null;
+        }
+    }
+    
+    showSuccess(message) {
+        this.showNotification(message, 'success');
+    }
+    
+    showError(message) {
+        this.showNotification(message, 'error');
+    }
+    
+    showNotification(message, type) {
+        // Bridge to existing toast system
+        if (typeof showToast === 'function') {
+            showToast(message, type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info'));
+            return;
+        }
+        
+        // Fallback notification system
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        notification.style.cssText = 'position:fixed;top:16px;right:16px;background:#333;color:#fff;padding:10px 14px;border-radius:8px;z-index:9999;';
+        
+        if (type === 'success') notification.style.background = '#4CAF50';
+        if (type === 'error') notification.style.background = '#f44336';
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 4000);
+    }
+    
+    getDailyTargets() {
+        return this.dailyTargets;
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     initializeElements();
@@ -54,7 +366,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     loadPersistedMeal();
     updateTotals();
-
+    
+    // Initialize Enhanced User Profile (TDEE + targets)
+    try {
+        enhancedUserProfile = new EnhancedUserProfile();
+        if (isDebugMode) console.log('✅ Enhanced User Profile initialized');
+    } catch (error) {
+        console.error('Failed to initialize Enhanced User Profile:', error);
+    }
+    
     if (isDebugMode) console.log('🐛 Debug mode enabled');
 });
 
@@ -97,7 +417,6 @@ async function loadDatabases() {
             mealDatabase = await mealsResponse.json();
             if (isDebugMode) console.log('Loaded meal.json:', mealDatabase.length, 'items');
         }
-
     } catch (error) {
         console.error('Error loading databases:', error);
         showToast('Error loading food databases', 'error');
@@ -142,12 +461,12 @@ function setupEventListeners() {
     elements.searchInput.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         const query = e.target.value.trim();
-
+        
         if (query.length < 2) {
             hideSuggestions();
             return;
         }
-
+        
         searchTimeout = setTimeout(() => performSearch(query), 300);
     });
 
@@ -217,7 +536,6 @@ function setupModalEventListeners() {
 
 async function performSearch(query) {
     if (isDebugMode) console.log('🔍 Searching for:', query);
-
     const lowQuery = query.toLowerCase();
     let results = [];
 
@@ -226,7 +544,6 @@ async function performSearch(query) {
         .filter(item => item.source_type === 'meal')
         .filter(item => item.searchName.includes(lowQuery))
         .slice(0, 6);
-
     results.push(...mealResults);
 
     // 2. Search FSSAI database
@@ -235,7 +552,6 @@ async function performSearch(query) {
             .filter(item => item.source_type === 'fssai')
             .filter(item => item.searchName.includes(lowQuery))
             .slice(0, 6 - results.length);
-
         results.push(...fssaiResults);
     }
 
@@ -245,7 +561,6 @@ async function performSearch(query) {
             .filter(item => item.source_type === 'local')
             .filter(item => item.searchName.includes(lowQuery))
             .slice(0, 6 - results.length);
-
         results.push(...localResults);
     }
 
@@ -273,7 +588,6 @@ async function searchUSDA(query) {
     }
 
     const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=${USDA_PAGE_SIZE}&api_key=${USDA_API_KEY}`;
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
@@ -300,7 +614,6 @@ async function searchUSDA(query) {
 
         if (isDebugMode) console.log('USDA API returned', results.length, 'items');
         return results;
-
     } catch (error) {
         clearTimeout(timeoutId);
         if (error.name === 'AbortError') {
@@ -415,32 +728,29 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return string.replace(/[.*+?^${}()|[\]\]/g, '\$&');
 }
 
 function handleSearchKeydown(e) {
     const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
-
+    
     switch (e.key) {
         case 'ArrowDown':
             e.preventDefault();
             currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestionItems.length - 1);
             updateSuggestionHighlight(suggestionItems);
             break;
-
         case 'ArrowUp':
             e.preventDefault();
             currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
             updateSuggestionHighlight(suggestionItems);
             break;
-
         case 'Enter':
             e.preventDefault();
             if (currentSuggestionIndex >= 0 && suggestionItems[currentSuggestionIndex]) {
                 suggestionItems[currentSuggestionIndex].click();
             }
             break;
-
         case 'Escape':
             hideSuggestions();
             break;
@@ -502,7 +812,7 @@ function openQuantityModal() {
     // Set up unit options
     const unitSelect = document.getElementById('modalUnit');
     unitSelect.innerHTML = '<option value="g">grams (g)</option><option value="ml">milliliters (ml)</option>';
-
+    
     if (food.serving_grams && food.serving_grams > 0) {
         unitSelect.innerHTML += `<option value="piece">pieces (${food.serving_grams}g each)</option>`;
     } else {
@@ -608,7 +918,7 @@ function confirmAddFood() {
 
 function updateMealDisplay() {
     const tbody = elements.mealTbody;
-
+    
     if (mealList.length === 0) {
         tbody.innerHTML = `
             <tr id="emptyMealRow">
@@ -698,6 +1008,7 @@ function updateTDEEComparison() {
     // Change color based on progress
     const bar = elements.tdeeBar;
     bar.className = bar.className.replace(/bg-(red|yellow|green|blue)-\d+/, '');
+    
     if (percentage < 80) {
         bar.classList.add('bg-blue-600');
     } else if (percentage <= 100) {
@@ -735,7 +1046,6 @@ async function downloadMealPDF() {
         // Header
         pdf.setFontSize(18);
         pdf.text('Meal Nutrition Report', 20, 20);
-
         pdf.setFontSize(10);
         pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
 
@@ -765,27 +1075,25 @@ async function downloadMealPDF() {
         // Food items
         pdf.setFontSize(12);
         pdf.text('FOOD ITEMS', 20, 95);
-
+        
         let yPos = 105;
         mealList.forEach((item, index) => {
             if (yPos > 270) {
                 pdf.addPage();
                 yPos = 20;
             }
-
+            
             pdf.setFontSize(10);
             pdf.text(`${index + 1}. ${item.name}`, 20, yPos);
             pdf.text(`${item.quantity} ${item.unit} | ${Math.round(item.calories)} cal`, 20, yPos + 7);
             pdf.text(`P: ${item.protein.toFixed(1)}g | C: ${item.carbs.toFixed(1)}g | F: ${item.fat.toFixed(1)}g`, 20, yPos + 14);
             pdf.setFontSize(8);
             pdf.text(`Source: ${item.source}`, 20, yPos + 21);
-
             yPos += 30;
         });
 
         pdf.save(`meal-nutrition-${new Date().toISOString().split('T')[0]}.pdf`);
         showToast('PDF downloaded successfully', 'success');
-
     } catch (error) {
         console.error('PDF generation error:', error);
         showToast('Error generating PDF', 'error');
@@ -818,7 +1126,7 @@ function exportMealJSON() {
         const jsonData = JSON.stringify(mealList, null, 2);
         const blob = new Blob([jsonData], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-
+        
         const a = document.createElement('a');
         a.href = url;
         a.download = `meal-${new Date().toISOString().split('T')[0]}.json`;
@@ -826,7 +1134,7 @@ function exportMealJSON() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-
+        
         showToast('Meal exported successfully', 'success');
     } catch (error) {
         console.error('Export error:', error);
@@ -836,7 +1144,7 @@ function exportMealJSON() {
 
 function clearMeal() {
     if (mealList.length === 0) return;
-
+    
     if (confirm('Are you sure you want to clear all items from your meal?')) {
         mealList = [];
         updateMealDisplay();
@@ -893,7 +1201,6 @@ function addCustomFood() {
     currentFoodForModal = customFood;
     currentEditIndex = -1;
     openQuantityModal();
-
     showToast('Custom food added', 'success');
 }
 
@@ -904,7 +1211,7 @@ function openImportModal() {
 
 function importMealData() {
     const jsonText = document.getElementById('importTextarea').value.trim();
-
+    
     if (!jsonText) {
         showToast('Please paste JSON data', 'warning');
         return;
@@ -912,7 +1219,7 @@ function importMealData() {
 
     try {
         const importedData = JSON.parse(jsonText);
-
+        
         if (!Array.isArray(importedData)) {
             throw new Error('JSON must be an array of meal items');
         }
@@ -935,10 +1242,9 @@ function importMealData() {
         updateMealDisplay();
         updateTotals();
         persistMeal();
-
         closeModal(elements.importModal);
+        
         showToast(`Imported ${validItems.length} meal items`, 'success');
-
     } catch (error) {
         console.error('Import error:', error);
         showToast(`Import failed: ${error.message}`, 'error');
@@ -969,12 +1275,12 @@ function loadPersistedMeal() {
     try {
         const savedMeal = localStorage.getItem('food-calc-meal');
         const savedTdee = localStorage.getItem('food-calc-tdee');
-
+        
         if (savedMeal) {
             mealList = JSON.parse(savedMeal);
             updateMealDisplay();
         }
-
+        
         if (savedTdee) {
             elements.tdeeInput.value = savedTdee;
         }
@@ -987,13 +1293,13 @@ function getCachedData(key) {
     try {
         const cached = localStorage.getItem(key);
         if (!cached) return null;
-
+        
         const data = JSON.parse(cached);
         if (Date.now() - data.timestamp > USDA_CACHE_TTL_MS) {
             localStorage.removeItem(key);
             return null;
         }
-
+        
         return data.value;
     } catch (error) {
         localStorage.removeItem(key);
@@ -1008,7 +1314,6 @@ function setCachedData(key, value) {
             timestamp: Date.now()
         };
         localStorage.setItem(key, JSON.stringify(data));
-
         if (isDebugMode) console.log('Cached:', key);
     } catch (error) {
         console.error('Cache error:', error);
@@ -1023,18 +1328,18 @@ function showToast(message, type = 'info') {
         warning: 'bg-yellow-500 text-black',
         info: 'bg-blue-500 text-white'
     };
-
+    
     toast.className = `${colors[type]} px-4 py-3 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full`;
     toast.textContent = message;
-
+    
     const container = document.getElementById('toastContainer');
     container.appendChild(toast);
-
+    
     // Animate in
     setTimeout(() => {
         toast.classList.remove('translate-x-full');
     }, 10);
-
+    
     // Remove after 4 seconds
     setTimeout(() => {
         toast.classList.add('translate-x-full');
@@ -1060,6 +1365,7 @@ if (isDebugMode) {
             fssai: fssaiDatabase.length, 
             meals: mealDatabase.length
         },
-        cache: Object.keys(localStorage).filter(k => k.includes('usda'))
+        cache: Object.keys(localStorage).filter(k => k.includes('usda')),
+        profile: enhancedUserProfile ? enhancedUserProfile.getDailyTargets() : null
     });
 }
