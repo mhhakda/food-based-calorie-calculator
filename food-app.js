@@ -1,6 +1,6 @@
 // food-app.js
 // Enhanced Calorie Calculator with Profile System and Advanced Progress Tracking
-// Version 2.0 - Complete Enhancement Implementation
+// Version 2.1 - Fixed Button Functionality
 
 // CONFIG (replace with server proxy in production)
 const USDA_API_KEY = 'MA2uDUaXzLNNDGmRBiRu1p0YxC7cCoBduPhhPnhK';
@@ -25,6 +25,7 @@ let currentSuggestionIndex = -1;
 let isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
 let enhancedUserProfile = null;
 let advancedProgressTracker = null;
+let currentSearchFilter = 'all';
 
 // DOM Elements
 const elements = {
@@ -41,6 +42,73 @@ const elements = {
     quantityModal: null,
     customFoodModal: null,
     importModal: null
+};
+
+// =========================
+// Quick Category Food Data
+// =========================
+const CATEGORY_FOODS = {
+    fruits: [
+        { name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
+        { name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 },
+        { name: 'Orange', calories: 47, protein: 0.9, carbs: 12, fat: 0.1 },
+        { name: 'Grapes', calories: 62, protein: 0.6, carbs: 16, fat: 0.2 },
+        { name: 'Mango', calories: 60, protein: 0.8, carbs: 15, fat: 0.4 },
+        { name: 'Strawberries', calories: 32, protein: 0.7, carbs: 8, fat: 0.3 }
+    ],
+    vegetables: [
+        { name: 'Broccoli', calories: 34, protein: 2.8, carbs: 7, fat: 0.4 },
+        { name: 'Spinach', calories: 23, protein: 2.9, carbs: 4, fat: 0.4 },
+        { name: 'Carrots', calories: 41, protein: 0.9, carbs: 10, fat: 0.2 },
+        { name: 'Bell Pepper', calories: 31, protein: 1, carbs: 7, fat: 0.3 },
+        { name: 'Tomato', calories: 18, protein: 0.9, carbs: 4, fat: 0.2 },
+        { name: 'Cucumber', calories: 16, protein: 0.7, carbs: 4, fat: 0.1 }
+    ],
+    proteins: [
+        { name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+        { name: 'Salmon', calories: 208, protein: 20, carbs: 0, fat: 12 },
+        { name: 'Eggs', calories: 155, protein: 13, carbs: 1, fat: 11 },
+        { name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4 },
+        { name: 'Tofu', calories: 76, protein: 8, carbs: 2, fat: 5 },
+        { name: 'Lentils', calories: 116, protein: 9, carbs: 20, fat: 0.4 }
+    ],
+    grains: [
+        { name: 'Brown Rice', calories: 111, protein: 3, carbs: 23, fat: 0.9 },
+        { name: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9 },
+        { name: 'Oats', calories: 389, protein: 17, carbs: 66, fat: 7 },
+        { name: 'Whole Wheat Bread', calories: 247, protein: 13, carbs: 41, fat: 4.2 },
+        { name: 'Pasta', calories: 131, protein: 5, carbs: 25, fat: 1.1 },
+        { name: 'Barley', calories: 123, protein: 2.3, carbs: 28, fat: 0.4 }
+    ],
+    dairy: [
+        { name: 'Milk', calories: 42, protein: 3.4, carbs: 5, fat: 1 },
+        { name: 'Cheese', calories: 113, protein: 7, carbs: 1, fat: 9 },
+        { name: 'Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4 },
+        { name: 'Butter', calories: 717, protein: 0.9, carbs: 0.1, fat: 81 },
+        { name: 'Cottage Cheese', calories: 98, protein: 11, carbs: 3.4, fat: 4.3 }
+    ],
+    snacks: [
+        { name: 'Almonds', calories: 579, protein: 21, carbs: 22, fat: 50 },
+        { name: 'Peanuts', calories: 567, protein: 26, carbs: 16, fat: 49 },
+        { name: 'Dark Chocolate', calories: 546, protein: 8, carbs: 61, fat: 31 },
+        { name: 'Popcorn', calories: 375, protein: 12, carbs: 74, fat: 4.5 },
+        { name: 'Crackers', calories: 502, protein: 9, carbs: 66, fat: 23 }
+    ],
+    beverages: [
+        { name: 'Coffee', calories: 2, protein: 0.3, carbs: 0, fat: 0 },
+        { name: 'Tea', calories: 1, protein: 0, carbs: 0.3, fat: 0 },
+        { name: 'Orange Juice', calories: 45, protein: 0.7, carbs: 10, fat: 0.2 },
+        { name: 'Coconut Water', calories: 19, protein: 0.7, carbs: 4, fat: 0.2 },
+        { name: 'Green Tea', calories: 1, protein: 0, carbs: 0, fat: 0 }
+    ],
+    indian: [
+        { name: 'Basmati Rice', calories: 121, protein: 3, carbs: 25, fat: 0.4 },
+        { name: 'Roti', calories: 297, protein: 11, carbs: 61, fat: 2.7 },
+        { name: 'Dal', calories: 116, protein: 9, carbs: 20, fat: 0.4 },
+        { name: 'Paneer', calories: 265, protein: 20, carbs: 1.2, fat: 20 },
+        { name: 'Curd', calories: 60, protein: 11, carbs: 4.7, fat: 0.1 },
+        { name: 'Ghee', calories: 900, protein: 0, carbs: 0, fat: 100 }
+    ]
 };
 
 // =========================
@@ -612,6 +680,162 @@ class AdvancedProgressTracker {
     }
 }
 
+// =========================
+// Barcode Scanner
+// =========================
+class BarcodeScanner {
+    constructor() {
+        this.isScanning = false;
+        this.stream = null;
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        const scanBtn = document.getElementById('barcode-scan-btn');
+        if (scanBtn) {
+            scanBtn.addEventListener('click', () => {
+                this.startBarcodeScanning();
+            });
+        }
+        
+        const closeBtn = document.getElementById('close-scanner');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.stopScanning();
+            });
+        }
+    }
+    
+    async startBarcodeScanning() {
+        // Show modal first
+        const modal = document.getElementById('barcode-scanner-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+        
+        // For demo purposes, simulate barcode scanning
+        showToast('📱 Barcode scanning feature coming soon! For now, you can search manually.', 'info');
+        
+        // You can integrate with libraries like:
+        // - QuaggaJS for barcode scanning
+        // - ZXing for QR codes
+        // - Or use the experimental BarcodeDetector API
+        
+        setTimeout(() => {
+            if (modal) modal.classList.add('hidden');
+        }, 3000);
+    }
+    
+    stopScanning() {
+        if (this.stream) {
+            this.stream.getTracks().forEach(track => track.stop());
+            this.stream = null;
+        }
+        
+        const modal = document.getElementById('barcode-scanner-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+        
+        this.isScanning = false;
+    }
+}
+
+// =========================
+// Voice Search
+// =========================
+class VoiceSearch {
+    constructor() {
+        this.isListening = false;
+        this.recognition = null;
+        this.setupVoiceRecognition();
+        this.setupEventListeners();
+    }
+    
+    setupVoiceRecognition() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+            
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                this.handleVoiceResult(transcript);
+            };
+            
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.stopListening();
+                showToast('Voice recognition error. Please try again.', 'error');
+            };
+            
+            this.recognition.onend = () => {
+                this.stopListening();
+            };
+        }
+    }
+    
+    setupEventListeners() {
+        const voiceBtn = document.getElementById('voice-search-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                if (this.isListening) {
+                    this.stopListening();
+                } else {
+                    this.startListening();
+                }
+            });
+        }
+    }
+    
+    startListening() {
+        if (!this.recognition) {
+            showToast('🎤 Voice search not supported in this browser', 'warning');
+            return;
+        }
+        
+        this.isListening = true;
+        const voiceBtn = document.getElementById('voice-search-btn');
+        if (voiceBtn) {
+            voiceBtn.textContent = '⏹️ Stop Listening';
+            voiceBtn.style.background = 'linear-gradient(45deg, #ff4757, #ff3742)';
+        }
+        
+        showToast('🎤 Listening... Speak now!', 'info');
+        this.recognition.start();
+    }
+    
+    stopListening() {
+        this.isListening = false;
+        const voiceBtn = document.getElementById('voice-search-btn');
+        if (voiceBtn) {
+            voiceBtn.textContent = '🎤 Voice Search';
+            voiceBtn.style.background = 'linear-gradient(45deg, #f093fb, #f5576c)';
+        }
+        
+        if (this.recognition) {
+            this.recognition.stop();
+        }
+    }
+    
+    handleVoiceResult(transcript) {
+        const searchInput = document.getElementById('foodSearch');
+        if (searchInput) {
+            searchInput.value = transcript;
+            showToast(`🎤 Heard: "${transcript}"`, 'success');
+            
+            // Trigger search
+            const event = new Event('input', { bubbles: true });
+            searchInput.dispatchEvent(event);
+        }
+        
+        this.stopListening();
+    }
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
     initializeElements();
@@ -625,6 +849,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         enhancedUserProfile = new EnhancedUserProfile();
         advancedProgressTracker = new AdvancedProgressTracker();
+        
+        // Initialize new button functionality
+        new BarcodeScanner();
+        new VoiceSearch();
+        
         if (isDebugMode) console.log('✅ Enhanced systems initialized');
     } catch (error) {
         console.error('Failed to initialize enhanced systems:', error);
@@ -746,8 +975,76 @@ function setupEventListeners() {
     document.getElementById('btnExportMeal').addEventListener('click', exportMealJSON);
     document.getElementById('btnClearMeal').addEventListener('click', clearMeal);
 
+    // Setup filter buttons
+    setupFilterButtons();
+    
+    // Setup category buttons
+    setupCategoryButtons();
+
     // Modal event listeners
     setupModalEventListeners();
+}
+
+// =========================
+// Filter Buttons Functionality
+// =========================
+function setupFilterButtons() {
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Update active state
+            filterButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            // Update current filter
+            currentSearchFilter = e.target.dataset.source || 'all';
+            
+            // Re-run search if there's a query
+            const searchValue = elements.searchInput.value.trim();
+            if (searchValue.length >= 2) {
+                performSearch(searchValue);
+            }
+            
+            showToast(`Filter set to: ${e.target.textContent}`, 'info');
+        });
+    });
+}
+
+// =========================
+// Category Buttons Functionality  
+// =========================
+function setupCategoryButtons() {
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    categoryButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const category = e.target.dataset.category;
+            if (category && CATEGORY_FOODS[category]) {
+                showCategoryFoods(category, CATEGORY_FOODS[category]);
+            }
+        });
+    });
+}
+
+function showCategoryFoods(categoryName, foods) {
+    // Clear search input
+    elements.searchInput.value = '';
+    
+    // Create enhanced food objects
+    const enhancedFoods = foods.map(food => ({
+        ...food,
+        id: `${categoryName}-${food.name.toLowerCase().replace(/\s+/g, '-')}`,
+        serving_size: '100g',
+        serving_grams: 100,
+        source: 'Quick Add',
+        origin: 'Category',
+        source_type: 'category',
+        last_updated: new Date().toISOString().split('T')[0]
+    }));
+    
+    // Display as suggestions
+    displaySuggestions(enhancedFoods, '');
+    
+    showToast(`Showing ${categoryName} foods`, 'success');
 }
 
 function setupModalEventListeners() {
@@ -785,6 +1082,12 @@ function setupModalEventListeners() {
             if (!quantityModal.classList.contains('hidden')) closeModal(quantityModal);
             if (!customFoodModal.classList.contains('hidden')) closeModal(customFoodModal);
             if (!importModal.classList.contains('hidden')) closeModal(importModal);
+            
+            // Close barcode scanner modal
+            const barcodeModal = document.getElementById('barcode-scanner-modal');
+            if (barcodeModal && !barcodeModal.classList.contains('hidden')) {
+                barcodeModal.classList.add('hidden');
+            }
         }
     });
 }
@@ -794,33 +1097,33 @@ async function performSearch(query) {
     const lowQuery = query.toLowerCase();
     let results = [];
 
-    // 1. Search meal database (exact & fuzzy)
-    const mealResults = searchIndex
-        .filter(item => item.source_type === 'meal')
+    // Apply filter
+    let filteredIndex = searchIndex;
+    if (currentSearchFilter !== 'all') {
+        filteredIndex = searchIndex.filter(item => {
+            switch (currentSearchFilter) {
+                case 'local':
+                    return item.source_type === 'local';
+                case 'fssai':
+                    return item.source_type === 'fssai';
+                case 'usda':
+                    return item.source_type === 'usda';
+                case 'branded':
+                    return item.source_type === 'branded' || item.source_type === 'meal';
+                default:
+                    return true;
+            }
+        });
+    }
+
+    // 1. Search filtered database
+    const localResults = filteredIndex
         .filter(item => item.searchName.includes(lowQuery))
         .slice(0, 6);
-    results.push(...mealResults);
+    results.push(...localResults);
 
-    // 2. Search FSSAI database
-    if (results.length < 6) {
-        const fssaiResults = searchIndex
-            .filter(item => item.source_type === 'fssai')
-            .filter(item => item.searchName.includes(lowQuery))
-            .slice(0, 6 - results.length);
-        results.push(...fssaiResults);
-    }
-
-    // 3. Search local foods database
-    if (results.length < 6) {
-        const localResults = searchIndex
-            .filter(item => item.source_type === 'local')
-            .filter(item => item.searchName.includes(lowQuery))
-            .slice(0, 6 - results.length);
-        results.push(...localResults);
-    }
-
-    // 4. If still need more results, search USDA
-    if (results.length < 6) {
+    // 2. If still need more results and filter allows, search USDA
+    if (results.length < 6 && (currentSearchFilter === 'all' || currentSearchFilter === 'usda')) {
         try {
             const usdaResults = await searchUSDA(query);
             results.push(...usdaResults.slice(0, 6 - results.length));
@@ -908,7 +1211,14 @@ function mapUSDAFoodToLocal(usdaFood) {
 
 function displaySuggestions(results, query) {
     if (results.length === 0) {
-        hideSuggestions();
+        elements.suggestions.innerHTML = `
+            <div class="no-results">
+                <div class="no-results-icon">🔍</div>
+                <div class="no-results-text">No foods found</div>
+                <div class="no-results-suggestion">Try a different search term or <button class="link-btn" onclick="openCustomFoodModal()">add custom food</button></div>
+            </div>
+        `;
+        elements.suggestions.classList.remove('hidden');
         return;
     }
 
@@ -955,6 +1265,7 @@ function getSourceIcon(item) {
         case 'FSSAI': return '🥤';
         case 'usda':
         case 'USDA': return '🍗';
+        case 'category': return '⭐';
         default: return '🥗';
     }
 }
@@ -971,6 +1282,8 @@ function getSourceBadge(item) {
         case 'usda':
         case 'USDA':
             return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">🇺🇸 USDA</span>';
+        case 'category':
+            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Quick Add</span>';
         default:
             return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Local</span>';
     }
@@ -983,10 +1296,8 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
-return string.replace(/[.*+?^${}()|[\]\\]/g, '$&');
-
+    return string.replace(/[.*+?^${}()|[\]\]/g, '\$&');
 }
-
 
 function handleSearchKeydown(e) {
     const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
@@ -1017,10 +1328,10 @@ function handleSearchKeydown(e) {
 function updateSuggestionHighlight(items) {
     items.forEach((item, index) => {
         if (index === currentSuggestionIndex) {
-            item.classList.add('bg-blue-50');
+            item.classList.add('bg-blue-50', 'keyboard-selected');
             item.setAttribute('aria-selected', 'true');
         } else {
-            item.classList.remove('bg-blue-50');
+            item.classList.remove('bg-blue-50', 'keyboard-selected');
             item.setAttribute('aria-selected', 'false');
         }
     });
@@ -1286,11 +1597,13 @@ function updateExportButtons(enabled) {
     const buttons = ['btnDownloadMeal', 'btnCopyMeal', 'btnExportMeal'];
     buttons.forEach(id => {
         const btn = document.getElementById(id);
-        btn.disabled = !enabled;
-        if (enabled) {
-            btn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
-        } else {
-            btn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
+        if (btn) {
+            btn.disabled = !enabled;
+            if (enabled) {
+                btn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
+            } else {
+                btn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
+            }
         }
     });
 }
@@ -1392,7 +1705,7 @@ function exportMealJSON() {
 
     try {
         const exportData = {
-            version: '2.0',
+            version: '2.1',
             timestamp: new Date().toISOString(),
             meals: mealList,
             profile: enhancedUserProfile?.userData || null
@@ -1431,7 +1744,8 @@ function clearMeal() {
 
 function openCustomFoodModal() {
     // Reset form
-    document.getElementById('customFoodForm').reset();
+    const form = document.getElementById('customFoodForm');
+    if (form) form.reset();
     showModal(elements.customFoodModal);
 }
 
@@ -1480,7 +1794,8 @@ function addCustomFood() {
 }
 
 function openImportModal() {
-    document.getElementById('importTextarea').value = '';
+    const textarea = document.getElementById('importTextarea');
+    if (textarea) textarea.value = '';
     showModal(elements.importModal);
 }
 
@@ -1530,12 +1845,16 @@ function importMealData() {
 }
 
 function showModal(modal) {
-    modal.classList.remove('hidden');
-    modal.focus();
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.focus();
+    }
 }
 
 function closeModal(modal) {
-    modal.classList.add('hidden');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
     currentFoodForModal = null;
     currentEditIndex = -1;
 }
@@ -1574,7 +1893,7 @@ function loadPersistedMeal() {
         }
         
         const savedTdee = localStorage.getItem('food-calc-tdee');
-        if (savedTdee) {
+        if (savedTdee && elements.tdeeInput) {
             elements.tdeeInput.value = savedTdee;
         }
         
@@ -1628,27 +1947,30 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     
     const container = document.getElementById('toastContainer');
-    container.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => {
-        toast.classList.remove('translate-x-full');
-    }, 10);
-    
-    // Remove after 4 seconds
-    setTimeout(() => {
-        toast.classList.add('translate-x-full');
+    if (container) {
+        container.appendChild(toast);
+        
+        // Animate in
         setTimeout(() => {
-            if (container.contains(toast)) {
-                container.removeChild(toast);
-            }
-        }, 300);
-    }, 4000);
+            toast.classList.remove('translate-x-full');
+        }, 10);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+            toast.classList.add('translate-x-full');
+            setTimeout(() => {
+                if (container.contains(toast)) {
+                    container.removeChild(toast);
+                }
+            }, 300);
+        }, 4000);
+    }
 }
 
 // Make functions globally available for onclick handlers
 window.editMealItem = editMealItem;
 window.removeMealItem = removeMealItem;
+window.openCustomFoodModal = openCustomFoodModal;
 
 // Debug function for development
 if (isDebugMode) {
@@ -1662,6 +1984,7 @@ if (isDebugMode) {
         },
         cache: Object.keys(localStorage).filter(k => k.includes('usda')),
         profile: enhancedUserProfile ? enhancedUserProfile.getDailyTargets() : null,
-        progressTracker: advancedProgressTracker ? 'initialized' : 'not initialized'
+        progressTracker: advancedProgressTracker ? 'initialized' : 'not initialized',
+        currentFilter: currentSearchFilter
     });
 }
