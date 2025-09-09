@@ -37,6 +37,115 @@
 
             <!-- Left/Main Content -->
             <div class="lg:col-span-3 space-y-6">
+                <!-- User Profile & Goal Setting Section -->
+<div id="user-profile-container" class="profile-container">
+    <div class="profile-header">
+        <h2>🎯 Set Your Daily Nutrition Goals</h2>
+        <button id="profile-toggle" class="toggle-btn">Show Profile Setup</button>
+    </div>
+    
+    <div id="profile-form-section" class="profile-form-section hidden">
+        <form id="user-profile-form" class="enhanced-profile-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="user-age">Age</label>
+                    <input type="number" id="user-age" min="16" max="100" placeholder="25">
+                </div>
+                
+                <div class="form-group">
+                    <label for="user-gender">Gender</label>
+                    <select id="user-gender">
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="user-weight">Weight (kg)</label>
+                    <input type="number" id="user-weight" min="30" max="300" step="0.1" placeholder="70">
+                </div>
+                
+                <div class="form-group">
+                    <label for="user-height">Height (cm)</label>
+                    <input type="number" id="user-height" min="120" max="250" placeholder="175">
+                </div>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="activity-level">Activity Level</label>
+                <select id="activity-level">
+                    <option value="">Select Activity Level</option>
+                    <option value="1.2">🪑 Sedentary - Office job, no exercise</option>
+                    <option value="1.375">🚶 Light - Light exercise 1-3 days/week</option>
+                    <option value="1.55">🏃 Moderate - Exercise 3-5 days/week</option>
+                    <option value="1.725">💪 Active - Hard exercise 6-7 days/week</option>
+                    <option value="1.9">🏋️ Very Active - Physical job + daily exercise</option>
+                </select>
+            </div>
+            
+            <div class="form-group full-width">
+                <label for="fitness-goal">Primary Goal</label>
+                <div class="goal-options">
+                    <label class="goal-option">
+                        <input type="radio" name="goal" value="lose" id="goal-lose">
+                        <span class="goal-card">
+                            <span class="goal-icon">📉</span>
+                            <span class="goal-text">Lose Weight</span>
+                            <small>20% calorie deficit</small>
+                        </span>
+                    </label>
+                    
+                    <label class="goal-option">
+                        <input type="radio" name="goal" value="maintain" id="goal-maintain">
+                        <span class="goal-card">
+                            <span class="goal-icon">⚖️</span>
+                            <span class="goal-text">Maintain</span>
+                            <small>Maintenance calories</small>
+                        </span>
+                    </label>
+                    
+                    <label class="goal-option">
+                        <input type="radio" name="goal" value="gain" id="goal-gain">
+                        <span class="goal-card">
+                            <span class="goal-icon">📈</span>
+                            <span class="goal-text">Gain Weight</span>
+                            <small>20% calorie surplus</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" class="calculate-goals-btn">
+                🔄 Calculate My Daily Goals
+            </button>
+        </form>
+        
+        <div id="calculated-goals" class="calculated-goals hidden">
+            <h3>📊 Your Personalized Daily Targets</h3>
+            <div class="goals-grid">
+                <div class="goal-item calories">
+                    <span class="goal-value" id="target-calories">0</span>
+                    <span class="goal-label">Calories</span>
+                </div>
+                <div class="goal-item protein">
+                    <span class="goal-value" id="target-protein">0g</span>
+                    <span class="goal-label">Protein</span>
+                </div>
+                <div class="goal-item carbs">
+                    <span class="goal-value" id="target-carbs">0g</span>
+                    <span class="goal-label">Carbs</span>
+                </div>
+                <div class="goal-item fat">
+                    <span class="goal-value" id="target-fat">0g</span>
+                    <span class="goal-label">Fat</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <!-- Search Section -->
                 <div class="bg-white rounded-lg shadow p-6">
