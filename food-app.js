@@ -983,11 +983,8 @@ function highlightMatch(text, query) {
 }
 
 function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]
+return string.replace(/[.*+?^${}()|[\]\\]/g, '$&');
 
-\\]
-
-/g, '\\$&');
 }
 
 
