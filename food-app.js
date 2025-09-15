@@ -1,124 +1,330 @@
-// food-app.js
-// Enhanced Calorie Calculator with Profile System and Advanced Progress Tracking
-// Version 2.1 - Fixed Button Functionality
+// Enhanced Food-Based Calorie Calculator - Mobile Optimized
+// Version 3.0 - Complete Mobile & Feature Overhaul
 
-// CONFIG (replace with server proxy in production)
+// ====================================
+// CONFIGURATION & CONSTANTS
+// ====================================
+
 const USDA_API_KEY = 'MA2uDUaXzLNNDGmRBiRu1p0YxC7cCoBduPhhPnhK';
 const USDA_PAGE_SIZE = 8;
 const USDA_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-// Tunables
-const DEFAULT_MACRO_SPLIT = { protein: 0.25, carbs: 0.45, fat: 0.30 };
-const ACTIVITY_MULTIPLIERS = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
-const UNIT_DEFAULTS = { serving_pieces_default: 1, liquid_ml_per_100g: 100 };
-
-// Global state
-let foodDatabase = [];
-let fssaiDatabase = [];
-let mealDatabase = [];
-let searchIndex = [];
-let mealList = [];
-let currentFoodForModal = null;
-let currentEditIndex = -1;
-let searchTimeout = null;
-let currentSuggestionIndex = -1;
-let isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
-let enhancedUserProfile = null;
-let advancedProgressTracker = null;
-let currentSearchFilter = 'all';
-
-// DOM Elements
-const elements = {
-    searchInput: null,
-    suggestions: null,
-    mealTbody: null,
-    totalCals: null,
-    totalProtein: null,
-    totalCarbs: null,
-    totalFat: null,
-    tdeeInput: null,
-    tdeeBar: null,
-    tdeePercent: null,
-    quantityModal: null,
-    customFoodModal: null,
-    importModal: null
+const DEFAULT_MACRO_SPLIT = {
+    protein: 0.25,
+    carbs: 0.45,
+    fat: 0.30
 };
 
-// =========================
-// Quick Category Food Data
-// =========================
+const ACTIVITY_MULTIPLIERS = {
+    1.2: 'Sedentary',
+    1.375: 'Light',
+    1.55: 'Moderate', 
+    1.725: 'Active',
+    1.9: 'Very Active'
+};
+
+// ====================================
+// EXPANDED FOOD CATEGORIES - 20 ITEMS EACH
+// ====================================
+
 const CATEGORY_FOODS = {
     fruits: [
-        { name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2 },
-        { name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3 },
-        { name: 'Orange', calories: 47, protein: 0.9, carbs: 12, fat: 0.1 },
-        { name: 'Grapes', calories: 62, protein: 0.6, carbs: 16, fat: 0.2 },
-        { name: 'Mango', calories: 60, protein: 0.8, carbs: 15, fat: 0.4 },
-        { name: 'Strawberries', calories: 32, protein: 0.7, carbs: 8, fat: 0.3 }
+        {name: 'Apple', calories: 52, protein: 0.3, carbs: 14, fat: 0.2},
+        {name: 'Banana', calories: 89, protein: 1.1, carbs: 23, fat: 0.3},
+        {name: 'Orange', calories: 47, protein: 0.9, carbs: 12, fat: 0.1},
+        {name: 'Grapes', calories: 62, protein: 0.6, carbs: 16, fat: 0.2},
+        {name: 'Mango', calories: 60, protein: 0.8, carbs: 15, fat: 0.4},
+        {name: 'Strawberries', calories: 32, protein: 0.7, carbs: 8, fat: 0.3},
+        {name: 'Pineapple', calories: 50, protein: 0.5, carbs: 13, fat: 0.1},
+        {name: 'Watermelon', calories: 30, protein: 0.6, carbs: 8, fat: 0.2},
+        {name: 'Cantaloupe', calories: 34, protein: 0.8, carbs: 8, fat: 0.2},
+        {name: 'Papaya', calories: 43, protein: 0.5, carbs: 11, fat: 0.3},
+        {name: 'Kiwi', calories: 61, protein: 1.1, carbs: 15, fat: 0.5},
+        {name: 'Blueberries', calories: 57, protein: 0.7, carbs: 14, fat: 0.3},
+        {name: 'Raspberries', calories: 52, protein: 1.2, carbs: 12, fat: 0.7},
+        {name: 'Blackberries', calories: 43, protein: 1.4, carbs: 10, fat: 0.5},
+        {name: 'Cherries', calories: 63, protein: 1.1, carbs: 16, fat: 0.2},
+        {name: 'Peach', calories: 39, protein: 0.9, carbs: 10, fat: 0.3},
+        {name: 'Plum', calories: 46, protein: 0.7, carbs: 11, fat: 0.3},
+        {name: 'Apricot', calories: 48, protein: 1.4, carbs: 11, fat: 0.4},
+        {name: 'Lemon', calories: 29, protein: 1.1, carbs: 9, fat: 0.3},
+        {name: 'Lime', calories: 30, protein: 0.7, carbs: 11, fat: 0.2}
     ],
     vegetables: [
-        { name: 'Broccoli', calories: 34, protein: 2.8, carbs: 7, fat: 0.4 },
-        { name: 'Spinach', calories: 23, protein: 2.9, carbs: 4, fat: 0.4 },
-        { name: 'Carrots', calories: 41, protein: 0.9, carbs: 10, fat: 0.2 },
-        { name: 'Bell Pepper', calories: 31, protein: 1, carbs: 7, fat: 0.3 },
-        { name: 'Tomato', calories: 18, protein: 0.9, carbs: 4, fat: 0.2 },
-        { name: 'Cucumber', calories: 16, protein: 0.7, carbs: 4, fat: 0.1 }
+        {name: 'Broccoli', calories: 34, protein: 2.8, carbs: 7, fat: 0.4},
+        {name: 'Spinach', calories: 23, protein: 2.9, carbs: 4, fat: 0.4},
+        {name: 'Carrots', calories: 41, protein: 0.9, carbs: 10, fat: 0.2},
+        {name: 'Bell Pepper', calories: 31, protein: 1, carbs: 7, fat: 0.3},
+        {name: 'Tomato', calories: 18, protein: 0.9, carbs: 4, fat: 0.2},
+        {name: 'Cucumber', calories: 16, protein: 0.7, carbs: 4, fat: 0.1},
+        {name: 'Cauliflower', calories: 25, protein: 1.9, carbs: 5, fat: 0.3},
+        {name: 'Zucchini', calories: 17, protein: 1.2, carbs: 3, fat: 0.3},
+        {name: 'Eggplant', calories: 25, protein: 1, carbs: 6, fat: 0.2},
+        {name: 'Mushrooms', calories: 22, protein: 3.1, carbs: 3, fat: 0.3},
+        {name: 'Onions', calories: 40, protein: 1.1, carbs: 9, fat: 0.1},
+        {name: 'Garlic', calories: 149, protein: 6.4, carbs: 33, fat: 0.5},
+        {name: 'Celery', calories: 16, protein: 0.7, carbs: 4, fat: 0.2},
+        {name: 'Asparagus', calories: 20, protein: 2.2, carbs: 4, fat: 0.1},
+        {name: 'Green Beans', calories: 31, protein: 1.8, carbs: 7, fat: 0.2},
+        {name: 'Brussels Sprouts', calories: 43, protein: 3.4, carbs: 9, fat: 0.3},
+        {name: 'Cabbage', calories: 25, protein: 1.3, carbs: 6, fat: 0.1},
+        {name: 'Sweet Potato', calories: 86, protein: 1.6, carbs: 20, fat: 0.1},
+        {name: 'Beets', calories: 43, protein: 1.6, carbs: 10, fat: 0.2},
+        {name: 'Kale', calories: 49, protein: 4.3, carbs: 9, fat: 0.9}
     ],
     proteins: [
-        { name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-        { name: 'Salmon', calories: 208, protein: 20, carbs: 0, fat: 12 },
-        { name: 'Eggs', calories: 155, protein: 13, carbs: 1, fat: 11 },
-        { name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4 },
-        { name: 'Tofu', calories: 76, protein: 8, carbs: 2, fat: 5 },
-        { name: 'Lentils', calories: 116, protein: 9, carbs: 20, fat: 0.4 }
+        {name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fat: 3.6},
+        {name: 'Salmon', calories: 208, protein: 20, carbs: 0, fat: 12},
+        {name: 'Eggs', calories: 155, protein: 13, carbs: 1, fat: 11},
+        {name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4},
+        {name: 'Tofu', calories: 76, protein: 8, carbs: 2, fat: 5},
+        {name: 'Lentils', calories: 116, protein: 9, carbs: 20, fat: 0.4},
+        {name: 'Tuna', calories: 144, protein: 30, carbs: 0, fat: 1},
+        {name: 'Turkey Breast', calories: 135, protein: 30, carbs: 0, fat: 1},
+        {name: 'Beef Sirloin', calories: 158, protein: 26, carbs: 0, fat: 5},
+        {name: 'Pork Tenderloin', calories: 143, protein: 26, carbs: 0, fat: 4},
+        {name: 'Cod', calories: 82, protein: 18, carbs: 0, fat: 0.7},
+        {name: 'Shrimp', calories: 85, protein: 20, carbs: 0, fat: 0.5},
+        {name: 'Cottage Cheese', calories: 98, protein: 11, carbs: 3.4, fat: 4.3},
+        {name: 'Black Beans', calories: 132, protein: 9, carbs: 23, fat: 0.5},
+        {name: 'Chickpeas', calories: 164, protein: 8, carbs: 27, fat: 2.6},
+        {name: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9},
+        {name: 'Hemp Seeds', calories: 553, protein: 31, carbs: 9, fat: 49},
+        {name: 'Tempeh', calories: 193, protein: 19, carbs: 9, fat: 11},
+        {name: 'Seitan', calories: 370, protein: 75, carbs: 14, fat: 2},
+        {name: 'Protein Powder', calories: 103, protein: 20, carbs: 3, fat: 1}
     ],
     grains: [
-        { name: 'Brown Rice', calories: 111, protein: 3, carbs: 23, fat: 0.9 },
-        { name: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9 },
-        { name: 'Oats', calories: 389, protein: 17, carbs: 66, fat: 7 },
-        { name: 'Whole Wheat Bread', calories: 247, protein: 13, carbs: 41, fat: 4.2 },
-        { name: 'Pasta', calories: 131, protein: 5, carbs: 25, fat: 1.1 },
-        { name: 'Barley', calories: 123, protein: 2.3, carbs: 28, fat: 0.4 }
+        {name: 'Brown Rice', calories: 111, protein: 3, carbs: 23, fat: 0.9},
+        {name: 'Quinoa', calories: 120, protein: 4.4, carbs: 22, fat: 1.9},
+        {name: 'Oats', calories: 389, protein: 17, carbs: 66, fat: 7},
+        {name: 'Whole Wheat Bread', calories: 247, protein: 13, carbs: 41, fat: 4.2},
+        {name: 'Pasta', calories: 131, protein: 5, carbs: 25, fat: 1.1},
+        {name: 'Barley', calories: 123, protein: 2.3, carbs: 28, fat: 0.4},
+        {name: 'White Rice', calories: 130, protein: 2.7, carbs: 28, fat: 0.3},
+        {name: 'Bulgur', calories: 83, protein: 3, carbs: 19, fat: 0.2},
+        {name: 'Millet', calories: 119, protein: 3.5, carbs: 23, fat: 1},
+        {name: 'Buckwheat', calories: 92, protein: 3.4, carbs: 19, fat: 0.6},
+        {name: 'Amaranth', calories: 102, protein: 4, carbs: 19, fat: 1.6},
+        {name: 'Wild Rice', calories: 101, protein: 4, carbs: 21, fat: 0.3},
+        {name: 'Cornmeal', calories: 362, protein: 8.1, carbs: 77, fat: 3.9},
+        {name: 'Rye Bread', calories: 259, protein: 9, carbs: 48, fat: 3.3},
+        {name: 'Spelt', calories: 127, protein: 5.5, carbs: 26, fat: 0.9},
+        {name: 'Farro', calories: 140, protein: 5, carbs: 26, fat: 2.5},
+        {name: 'Teff', calories: 101, protein: 3.9, carbs: 20, fat: 0.7},
+        {name: 'Sorghum', calories: 329, protein: 11, carbs: 72, fat: 3.3},
+        {name: 'Rice Cakes', calories: 387, protein: 8, carbs: 82, fat: 2.8},
+        {name: 'Couscous', calories: 112, protein: 3.8, carbs: 23, fat: 0.2}
     ],
     dairy: [
-        { name: 'Milk', calories: 42, protein: 3.4, carbs: 5, fat: 1 },
-        { name: 'Cheese', calories: 113, protein: 7, carbs: 1, fat: 9 },
-        { name: 'Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4 },
-        { name: 'Butter', calories: 717, protein: 0.9, carbs: 0.1, fat: 81 },
-        { name: 'Cottage Cheese', calories: 98, protein: 11, carbs: 3.4, fat: 4.3 }
+        {name: 'Milk (2%)', calories: 50, protein: 3.3, carbs: 5, fat: 2},
+        {name: 'Cheese (Cheddar)', calories: 113, protein: 7, carbs: 1, fat: 9},
+        {name: 'Greek Yogurt', calories: 59, protein: 10, carbs: 4, fat: 0.4},
+        {name: 'Butter', calories: 717, protein: 0.9, carbs: 0.1, fat: 81},
+        {name: 'Cottage Cheese', calories: 98, protein: 11, carbs: 3.4, fat: 4.3},
+        {name: 'Whole Milk', calories: 61, protein: 3.2, carbs: 5, fat: 3.3},
+        {name: 'Skim Milk', calories: 34, protein: 3.4, carbs: 5, fat: 0.2},
+        {name: 'Mozzarella', calories: 85, protein: 6, carbs: 1, fat: 6},
+        {name: 'Parmesan', calories: 108, protein: 10, carbs: 1, fat: 7},
+        {name: 'Cream Cheese', calories: 342, protein: 6, carbs: 4, fat: 34},
+        {name: 'Sour Cream', calories: 193, protein: 2.4, carbs: 4.6, fat: 19},
+        {name: 'Heavy Cream', calories: 340, protein: 2.8, carbs: 3, fat: 36},
+        {name: 'Ricotta', calories: 174, protein: 11, carbs: 3, fat: 13},
+        {name: 'Feta Cheese', calories: 75, protein: 4, carbs: 1, fat: 6},
+        {name: 'Swiss Cheese', calories: 106, protein: 8, carbs: 1, fat: 8},
+        {name: 'Goat Cheese', calories: 364, protein: 22, carbs: 3, fat: 30},
+        {name: 'Blue Cheese', calories: 99, protein: 6, carbs: 1, fat: 8},
+        {name: 'Kefir', calories: 41, protein: 3.8, carbs: 4.5, fat: 1},
+        {name: 'Buttermilk', calories: 40, protein: 3.3, carbs: 5, fat: 0.9},
+        {name: 'Ice Cream', calories: 207, protein: 3.5, carbs: 24, fat: 11}
     ],
     snacks: [
-        { name: 'Almonds', calories: 579, protein: 21, carbs: 22, fat: 50 },
-        { name: 'Peanuts', calories: 567, protein: 26, carbs: 16, fat: 49 },
-        { name: 'Dark Chocolate', calories: 546, protein: 8, carbs: 61, fat: 31 },
-        { name: 'Popcorn', calories: 375, protein: 12, carbs: 74, fat: 4.5 },
-        { name: 'Crackers', calories: 502, protein: 9, carbs: 66, fat: 23 }
+        {name: 'Almonds', calories: 579, protein: 21, carbs: 22, fat: 50},
+        {name: 'Peanuts', calories: 567, protein: 26, carbs: 16, fat: 49},
+        {name: 'Dark Chocolate', calories: 546, protein: 8, carbs: 61, fat: 31},
+        {name: 'Popcorn', calories: 375, protein: 12, carbs: 74, fat: 4.5},
+        {name: 'Crackers', calories: 502, protein: 9, carbs: 66, fat: 23},
+        {name: 'Cashews', calories: 553, protein: 18, carbs: 30, fat: 44},
+        {name: 'Walnuts', calories: 654, protein: 15, carbs: 14, fat: 65},
+        {name: 'Pistachios', calories: 560, protein: 20, carbs: 28, fat: 45},
+        {name: 'Sunflower Seeds', calories: 584, protein: 21, carbs: 20, fat: 52},
+        {name: 'Pumpkin Seeds', calories: 559, protein: 30, carbs: 11, fat: 49},
+        {name: 'Trail Mix', calories: 462, protein: 13, carbs: 45, fat: 29},
+        {name: 'Granola Bar', calories: 471, protein: 10, carbs: 64, fat: 20},
+        {name: 'Pretzels', calories: 380, protein: 11, carbs: 79, fat: 3},
+        {name: 'Beef Jerky', calories: 410, protein: 33, carbs: 11, fat: 26},
+        {name: 'Rice Crackers', calories: 384, protein: 7, carbs: 82, fat: 3},
+        {name: 'Cheese Sticks', calories: 318, protein: 25, carbs: 1, fat: 25},
+        {name: 'Apple Chips', calories: 243, protein: 1, carbs: 66, fat: 0.1},
+        {name: 'Protein Bar', calories: 376, protein: 26, carbs: 38, fat: 14},
+        {name: 'Hummus', calories: 166, protein: 8, carbs: 14, fat: 10},
+        {name: 'Olives', calories: 115, protein: 0.8, carbs: 6, fat: 11}
     ],
     beverages: [
-        { name: 'Coffee', calories: 2, protein: 0.3, carbs: 0, fat: 0 },
-        { name: 'Tea', calories: 1, protein: 0, carbs: 0.3, fat: 0 },
-        { name: 'Orange Juice', calories: 45, protein: 0.7, carbs: 10, fat: 0.2 },
-        { name: 'Coconut Water', calories: 19, protein: 0.7, carbs: 4, fat: 0.2 },
-        { name: 'Green Tea', calories: 1, protein: 0, carbs: 0, fat: 0 }
+        {name: 'Coffee', calories: 2, protein: 0.3, carbs: 0, fat: 0},
+        {name: 'Tea', calories: 1, protein: 0, carbs: 0.3, fat: 0},
+        {name: 'Orange Juice', calories: 45, protein: 0.7, carbs: 10, fat: 0.2},
+        {name: 'Coconut Water', calories: 19, protein: 0.7, carbs: 4, fat: 0.2},
+        {name: 'Green Tea', calories: 1, protein: 0, carbs: 0, fat: 0},
+        {name: 'Apple Juice', calories: 46, protein: 0.1, carbs: 11, fat: 0.1},
+        {name: 'Almond Milk', calories: 17, protein: 0.6, carbs: 1.5, fat: 1.1},
+        {name: 'Soy Milk', calories: 54, protein: 3.3, carbs: 6, fat: 1.8},
+        {name: 'Energy Drink', calories: 45, protein: 0, carbs: 11, fat: 0},
+        {name: 'Sports Drink', calories: 25, protein: 0, carbs: 6, fat: 0},
+        {name: 'Lemon Water', calories: 7, protein: 0.1, carbs: 2, fat: 0},
+        {name: 'Smoothie', calories: 182, protein: 4, carbs: 44, fat: 1},
+        {name: 'Protein Shake', calories: 103, protein: 20, carbs: 3, fat: 1},
+        {name: 'Kombucha', calories: 30, protein: 0, carbs: 7, fat: 0},
+        {name: 'Herbal Tea', calories: 2, protein: 0, carbs: 0.5, fat: 0},
+        {name: 'Black Tea', calories: 2, protein: 0, carbs: 0.3, fat: 0},
+        {name: 'White Tea', calories: 1, protein: 0, carbs: 0.2, fat: 0},
+        {name: 'Matcha', calories: 3, protein: 0.3, carbs: 0.4, fat: 0},
+        {name: 'Chai Tea', calories: 25, protein: 1, carbs: 4, fat: 1},
+        {name: 'Water', calories: 0, protein: 0, carbs: 0, fat: 0}
     ],
     indian: [
-        { name: 'Basmati Rice', calories: 121, protein: 3, carbs: 25, fat: 0.4 },
-        { name: 'Roti', calories: 297, protein: 11, carbs: 61, fat: 2.7 },
-        { name: 'Dal', calories: 116, protein: 9, carbs: 20, fat: 0.4 },
-        { name: 'Paneer', calories: 265, protein: 20, carbs: 1.2, fat: 20 },
-        { name: 'Curd', calories: 60, protein: 11, carbs: 4.7, fat: 0.1 },
-        { name: 'Ghee', calories: 900, protein: 0, carbs: 0, fat: 100 }
+        {name: 'Basmati Rice', calories: 121, protein: 3, carbs: 25, fat: 0.4},
+        {name: 'Roti', calories: 297, protein: 11, carbs: 61, fat: 2.7},
+        {name: 'Dal', calories: 116, protein: 9, carbs: 20, fat: 0.4},
+        {name: 'Paneer', calories: 265, protein: 20, carbs: 1.2, fat: 20},
+        {name: 'Curd', calories: 60, protein: 11, carbs: 4.7, fat: 0.1},
+        {name: 'Ghee', calories: 900, protein: 0, carbs: 0, fat: 100},
+        {name: 'Naan', calories: 262, protein: 9, carbs: 45, fat: 5},
+        {name: 'Chicken Curry', calories: 180, protein: 25, carbs: 5, fat: 8},
+        {name: 'Rajma', calories: 127, protein: 9, carbs: 23, fat: 0.5},
+        {name: 'Chana', calories: 164, protein: 8, carbs: 27, fat: 2.6},
+        {name: 'Samosa', calories: 308, protein: 6, carbs: 25, fat: 21},
+        {name: 'Idli', calories: 58, protein: 2, carbs: 12, fat: 0.1},
+        {name: 'Dosa', calories: 168, protein: 4, carbs: 29, fat: 4},
+        {name: 'Upma', calories: 85, protein: 2, carbs: 17, fat: 1.4},
+        {name: 'Paratha', calories: 320, protein: 11, carbs: 35, fat: 15},
+        {name: 'Biryani', calories: 200, protein: 8, carbs: 35, fat: 4},
+        {name: 'Tandoori Chicken', calories: 150, protein: 28, carbs: 2, fat: 4},
+        {name: 'Palak', calories: 26, protein: 3, carbs: 3, fat: 0.7},
+        {name: 'Aloo Gobi', calories: 130, protein: 3, carbs: 20, fat: 5},
+        {name: 'Lassi', calories: 89, protein: 3, carbs: 13, fat: 3}
     ]
 };
 
-// =========================
-// Profiles & TDEE (Enhanced)
-// =========================
-class EnhancedUserProfile {
+// ====================================
+// GLOBAL STATE MANAGEMENT
+// ====================================
+
+let globalState = {
+    mealList: [],
+    currentFoodForModal: null,
+    currentEditIndex: -1,
+    searchTimeout: null,
+    currentSearchFilter: 'all',
+    dailyTargets: {
+        calories: 2000,
+        protein: 150,
+        carbs: 200,
+        fat: 67
+    },
+    scanner: null,
+    isDebugMode: new URLSearchParams(window.location.search).get('debug') === 'true'
+};
+
+// ====================================
+// DOM ELEMENT CACHE
+// ====================================
+
+const elements = {};
+
+// ====================================
+// UTILITY FUNCTIONS
+// ====================================
+
+function $(selector) {
+    return document.querySelector(selector);
+}
+
+function $$(selector) {
+    return document.querySelectorAll(selector);
+}
+
+function createElement(tag, attributes = {}, children = []) {
+    const element = document.createElement(tag);
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+        if (key === 'className') {
+            element.className = value;
+        } else if (key === 'innerHTML') {
+            element.innerHTML = value;
+        } else {
+            element.setAttribute(key, value);
+        }
+    });
+    
+    children.forEach(child => {
+        if (typeof child === 'string') {
+            element.appendChild(document.createTextNode(child));
+        } else {
+            element.appendChild(child);
+        }
+    });
+    
+    return element;
+}
+
+function showToast(message, type = 'success', duration = 3000) {
+    const container = $('#toast-container');
+    const toast = createElement('div', {
+        className: `alert alert-${type}`,
+        style: 'margin-bottom: 10px; animation: slideIn 0.3s ease-out;'
+    }, [message]);
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => {
+            if (container.contains(toast)) {
+                container.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// ====================================
+// USER PROFILE MANAGEMENT
+// ====================================
+
+class UserProfileManager {
     constructor() {
         this.userData = this.loadUserData();
-        this.dailyTargets = null;
         this.initializeProfile();
+    }
+    
+    loadUserData() {
+        try {
+            const data = localStorage.getItem('userProfile');
+            return data ? JSON.parse(data) : null;
+        } catch (error) {
+            console.error('Error loading user profile:', error);
+            return null;
+        }
+    }
+    
+    saveUserData() {
+        try {
+            localStorage.setItem('userProfile', JSON.stringify(this.userData));
+        } catch (error) {
+            console.error('Error saving user profile:', error);
+        }
     }
     
     initializeProfile() {
@@ -130,8 +336,8 @@ class EnhancedUserProfile {
     }
     
     setupEventListeners() {
-        // Profile toggle - check if elements exist before adding listeners
-        const profileToggle = document.getElementById('profile-toggle');
+        // Profile toggle
+        const profileToggle = $('#profile-toggle');
         if (profileToggle) {
             profileToggle.addEventListener('click', () => {
                 this.toggleProfileForm();
@@ -139,29 +345,30 @@ class EnhancedUserProfile {
         }
         
         // Form submission
-        const profileForm = document.getElementById('user-profile-form');
+        const profileForm = $('#user-profile-form');
         if (profileForm) {
             profileForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 this.handleProfileSubmission();
             });
-            
-            // Real-time goal updates
-            const formInputs = profileForm.querySelectorAll('input, select');
-            formInputs.forEach(input => {
-                input.addEventListener('change', () => {
-                    if (this.isFormValid()) {
-                        this.previewGoals();
-                    }
-                });
-            });
         }
+        
+        // Goal radio button styling
+        $$('input[name="goal"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                $$('input[name="goal"]').forEach(r => {
+                    r.parentElement.classList.remove('btn-success');
+                    r.parentElement.classList.add('btn-secondary');
+                });
+                e.target.parentElement.classList.remove('btn-secondary');
+                e.target.parentElement.classList.add('btn-success');
+            });
+        });
     }
     
     toggleProfileForm() {
-        const formSection = document.getElementById('profile-form-section');
-        const toggleBtn = document.getElementById('profile-toggle');
-        
+        const formSection = $('#profile-form-section');
+        const toggleBtn = $('#profile-toggle');
         if (formSection && toggleBtn) {
             formSection.classList.toggle('hidden');
             toggleBtn.textContent = formSection.classList.contains('hidden') 
@@ -172,38 +379,28 @@ class EnhancedUserProfile {
     
     handleProfileSubmission() {
         const formData = this.collectFormData();
-        
         if (!this.validateFormData(formData)) {
-            this.showError('Please fill in all required fields');
+            showToast('Please fill in all required fields', 'danger');
             return;
         }
         
         this.userData = formData;
         this.saveUserData();
         this.calculateAndDisplayGoals();
-        this.showSuccess('Profile saved! Daily targets calculated.');
+        showToast('Profile saved! Daily targets calculated.', 'success');
         
-        // Trigger app update
-        window.dispatchEvent(new CustomEvent('profileUpdated', { 
-            detail: { targets: this.dailyTargets } 
-        }));
+        // Hide profile form after successful submission
+        this.toggleProfileForm();
     }
     
     collectFormData() {
-        const ageEl = document.getElementById('user-age');
-        const genderEl = document.getElementById('user-gender');
-        const weightEl = document.getElementById('user-weight');
-        const heightEl = document.getElementById('user-height');
-        const activityEl = document.getElementById('activity-level');
-        const goalEl = document.querySelector('input[name="goal"]:checked');
-        
         return {
-            age: ageEl ? parseInt(ageEl.value) : null,
-            gender: genderEl ? genderEl.value : '',
-            weight: weightEl ? parseFloat(weightEl.value) : null,
-            height: heightEl ? parseInt(heightEl.value) : null,
-            activityLevel: activityEl ? parseFloat(activityEl.value) : null,
-            goal: goalEl ? goalEl.value : '',
+            age: parseInt($('#user-age')?.value) || null,
+            gender: $('#user-gender')?.value || '',
+            weight: parseFloat($('#user-weight')?.value) || null,
+            height: parseInt($('#user-height')?.value) || null,
+            activityLevel: parseFloat($('#activity-level')?.value) || null,
+            goal: $$('input[name="goal"]:checked')[0]?.value || '',
             lastUpdated: new Date().toISOString()
         };
     }
@@ -213,8 +410,26 @@ class EnhancedUserProfile {
                data.height && data.activityLevel && data.goal;
     }
     
+    populateForm() {
+        if (!this.userData) return;
+        
+        const { age, gender, weight, height, activityLevel, goal } = this.userData;
+        
+        if ($('#user-age')) $('#user-age').value = age;
+        if ($('#user-gender')) $('#user-gender').value = gender;
+        if ($('#user-weight')) $('#user-weight').value = weight;
+        if ($('#user-height')) $('#user-height').value = height;
+        if ($('#activity-level')) $('#activity-level').value = activityLevel;
+        
+        const goalRadio = $(`input[name="goal"][value="${goal}"]`);
+        if (goalRadio) {
+            goalRadio.checked = true;
+            goalRadio.dispatchEvent(new Event('change'));
+        }
+    }
+    
     calculateBMR(age, gender, weight, height) {
-        // Mifflin-St Jeor Equation (more accurate than Harris-Benedict)
+        // Mifflin-St Jeor Equation
         if (gender === 'male') {
             return (10 * weight) + (6.25 * height) - (5 * age) + 5;
         } else {
@@ -222,1773 +437,885 @@ class EnhancedUserProfile {
         }
     }
     
-    calculateTDEEAndMacros() {
-        if (!this.userData) return null;
+    calculateAndDisplayGoals() {
+        if (!this.userData) return;
         
         const { age, gender, weight, height, activityLevel, goal } = this.userData;
         
-        // Calculate BMR
+        // Calculate BMR and TDEE
         const bmr = this.calculateBMR(age, gender, weight, height);
-        
-        // Calculate TDEE
         let tdee = bmr * activityLevel;
         
         // Apply goal adjustment
         const goalMultipliers = {
             'lose': 0.8,    // 20% deficit
             'maintain': 1.0, // Maintenance
-            'gain': 1.2      // 20% surplus
+            'gain': 1.2     // 20% surplus
         };
         
         const adjustedCalories = Math.round(tdee * goalMultipliers[goal]);
         
-        // Calculate macros (flexible approach)
-        const proteinGrams = Math.round((adjustedCalories * 0.25) / 4); // 25% protein
-        const carbsGrams = Math.round((adjustedCalories * 0.45) / 4);   // 45% carbs
-        const fatGrams = Math.round((adjustedCalories * 0.30) / 9);     // 30% fat
+        // Calculate macros
+        const proteinGrams = Math.round((adjustedCalories * 0.25) / 4);
+        const carbsGrams = Math.round((adjustedCalories * 0.45) / 4);
+        const fatGrams = Math.round((adjustedCalories * 0.30) / 9);
         
-        return {
+        // Update global state
+        globalState.dailyTargets = {
             calories: adjustedCalories,
             protein: proteinGrams,
             carbs: carbsGrams,
-            fat: fatGrams,
-            bmr: Math.round(bmr),
-            tdee: Math.round(tdee)
+            fat: fatGrams
         };
+        
+        // Update display
+        this.updateTargetDisplay();
+        this.updateProgress(); // Refresh progress with new targets
     }
     
-    calculateAndDisplayGoals() {
-        this.dailyTargets = this.calculateTDEEAndMacros();
+    updateTargetDisplay() {
+        const targets = globalState.dailyTargets;
         
-        if (!this.dailyTargets) return;
-        
-        // Update display elements if they exist
-        const targetElements = {
-            calories: document.getElementById('target-calories'),
-            protein: document.getElementById('target-protein'),
-            carbs: document.getElementById('target-carbs'),
-            fat: document.getElementById('target-fat'),
-            goals: document.getElementById('calculated-goals')
-        };
-        
-        if (targetElements.calories) targetElements.calories.textContent = this.dailyTargets.calories;
-        if (targetElements.protein) targetElements.protein.textContent = this.dailyTargets.protein + 'g';
-        if (targetElements.carbs) targetElements.carbs.textContent = this.dailyTargets.carbs + 'g';
-        if (targetElements.fat) targetElements.fat.textContent = this.dailyTargets.fat + 'g';
+        if ($('#target-calories')) $('#target-calories').textContent = targets.calories;
+        if ($('#target-protein')) $('#target-protein').textContent = targets.protein + 'g';
+        if ($('#target-carbs')) $('#target-carbs').textContent = targets.carbs + 'g';
+        if ($('#target-fat')) $('#target-fat').textContent = targets.fat + 'g';
         
         // Show calculated goals section
-        if (targetElements.goals) {
-            targetElements.goals.classList.remove('hidden');
-        }
-        
-        // Update existing TDEE input
-        if (elements.tdeeInput) {
-            elements.tdeeInput.value = this.dailyTargets.calories;
-            // Trigger change event to update progress
-            elements.tdeeInput.dispatchEvent(new Event('input'));
+        const goalsSection = $('#calculated-goals');
+        if (goalsSection) {
+            goalsSection.classList.remove('hidden');
         }
     }
     
-    previewGoals() {
-        const tempData = this.collectFormData();
-        if (this.validateFormData(tempData)) {
-            const tempProfile = { ...this };
-            tempProfile.userData = tempData;
-            const previewTargets = tempProfile.calculateTDEEAndMacros.call(tempProfile);
-            
-            if (previewTargets) {
-                // Show preview with visual indication
-                this.showGoalsPreview(previewTargets);
-            }
-        }
+    updateProgress() {
+        nutritionTracker.updateAllProgress();
     }
-    
-    showGoalsPreview(targets) {
-        let previewDiv = document.getElementById('goals-preview');
-        if (!previewDiv) {
-            previewDiv = this.createGoalsPreview();
-        }
-        
-        if (previewDiv) {
-            previewDiv.innerHTML = `
-                <div class="preview-goals">
-                    <small>Preview: </small>
-                    <span>${targets.calories} cal</span> • 
-                    <span>${targets.protein}g protein</span> • 
-                    <span>${targets.carbs}g carbs</span> • 
-                    <span>${targets.fat}g fat</span>
-                </div>
-            `;
-            
-            previewDiv.classList.add('show');
-        }
-    }
-    
-    createGoalsPreview() {
-        const form = document.getElementById('user-profile-form');
-        if (form) {
-            const previewDiv = document.createElement('div');
-            previewDiv.id = 'goals-preview';
-            previewDiv.className = 'goals-preview';
-            form.appendChild(previewDiv);
-            return previewDiv;
-        }
-        return null;
-    }
-    
-    populateForm() {
-        if (!this.userData) return;
-        
-        const elements = {
-            age: document.getElementById('user-age'),
-            gender: document.getElementById('user-gender'),
-            weight: document.getElementById('user-weight'),
-            height: document.getElementById('user-height'),
-            activity: document.getElementById('activity-level')
+}
+
+// ====================================
+// BARCODE SCANNER IMPLEMENTATION
+// ====================================
+
+class BarcodeScanner {
+    constructor() {
+        this.scanner = null;
+        this.cameras = [];
+        this.currentCameraIndex = 0;
+        this.isScanning = false;
+        this.config = {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
         };
-        
-        if (elements.age) elements.age.value = this.userData.age || '';
-        if (elements.gender) elements.gender.value = this.userData.gender || '';
-        if (elements.weight) elements.weight.value = this.userData.weight || '';
-        if (elements.height) elements.height.value = this.userData.height || '';
-        if (elements.activity) elements.activity.value = this.userData.activityLevel || '';
-        
-        if (this.userData.goal) {
-            const goalRadio = document.querySelector(`input[name="goal"][value="${this.userData.goal}"]`);
-            if (goalRadio) goalRadio.checked = true;
-        }
     }
     
-    isFormValid() {
-        const tempData = this.collectFormData();
-        return this.validateFormData(tempData);
-    }
-    
-    saveUserData() {
+    async initialize() {
         try {
-            localStorage.setItem('enhancedCalcProfile', JSON.stringify(this.userData));
+            // Get available cameras
+            this.cameras = await Html5Qrcode.getCameras();
+            if (this.cameras.length === 0) {
+                throw new Error('No cameras found');
+            }
+            
+            // Initialize scanner
+            this.scanner = new Html5Qrcode("barcode-scanner");
+            console.log('Barcode scanner initialized successfully');
+            return true;
         } catch (error) {
-            console.error('Failed to save user data:', error);
+            console.error('Error initializing barcode scanner:', error);
+            showToast('Camera not available or permission denied', 'danger');
+            return false;
         }
     }
     
-    loadUserData() {
+    async startScanning() {
+        if (this.isScanning || !this.scanner) return;
+        
         try {
-            const data = localStorage.getItem('enhancedCalcProfile');
-            return data ? JSON.parse(data) : null;
+            const cameraId = this.cameras[this.currentCameraIndex]?.id || 
+                           { facingMode: "environment" };
+            
+            await this.scanner.start(
+                cameraId,
+                this.config,
+                this.onScanSuccess.bind(this),
+                this.onScanFailure.bind(this)
+            );
+            
+            this.isScanning = true;
+            console.log('Barcode scanning started');
         } catch (error) {
-            console.error('Failed to load user data:', error);
-            return null;
+            console.error('Error starting scanner:', error);
+            showToast('Failed to start camera', 'danger');
         }
     }
     
-    showSuccess(message) {
-        this.showNotification(message, 'success');
+    async stopScanning() {
+        if (!this.isScanning || !this.scanner) return;
+        
+        try {
+            await this.scanner.stop();
+            this.isScanning = false;
+            console.log('Barcode scanning stopped');
+        } catch (error) {
+            console.error('Error stopping scanner:', error);
+        }
     }
     
-    showError(message) {
-        this.showNotification(message, 'error');
-    }
-    
-    showNotification(message, type) {
-        // Bridge to existing toast system
-        if (typeof showToast === 'function') {
-            showToast(message, type === 'error' ? 'error' : (type === 'success' ? 'success' : 'info'));
+    async switchCamera() {
+        if (this.cameras.length <= 1) {
+            showToast('No additional cameras available', 'warning');
             return;
         }
         
-        // Fallback notification system
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        notification.style.cssText = 'position:fixed;top:16px;right:16px;background:#333;color:#fff;padding:10px 14px;border-radius:8px;z-index:9999;';
+        await this.stopScanning();
+        this.currentCameraIndex = (this.currentCameraIndex + 1) % this.cameras.length;
+        await this.startScanning();
         
-        if (type === 'success') notification.style.background = '#4CAF50';
-        if (type === 'error') notification.style.background = '#f44336';
+        showToast(`Switched to camera ${this.currentCameraIndex + 1}`, 'success');
+    }
+    
+    onScanSuccess(decodedText, decodedResult) {
+        console.log('Barcode scanned:', decodedText);
         
-        document.body.appendChild(notification);
+        // Close scanner modal
+        this.closeModal();
         
-        // Remove after 4 seconds
+        // Search for the scanned barcode
+        this.searchBarcode(decodedText);
+        
+        showToast(`Barcode scanned: ${decodedText}`, 'success');
+    }
+    
+    onScanFailure(error) {
+        // Silent failure - scanning is continuous
+    }
+    
+    async searchBarcode(barcode) {
+        // This would typically search a food database API
+        // For demo purposes, we'll show a message
+        showToast(`Searching for barcode: ${barcode}...`, 'warning');
+        
+        // You can integrate with APIs like:
+        // - FatSecret API
+        // - USDA FoodData Central
+        // - Edamam API
+        // - Custom database
+        
         setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 4000);
+            showToast('Barcode not found in database. Try manual search.', 'warning');
+        }, 2000);
     }
     
-    getDailyTargets() {
-        return this.dailyTargets;
-    }
-}
-
-// =========================
-// Advanced Progress Tracker
-// =========================
-class AdvancedProgressTracker {
-    constructor() {
-        this.currentTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-        this.dailyTargets = { calories: 2000, protein: 150, carbs: 200, fat: 67 };
-        this.progressRings = {};
-        
-        this.initializeProgressRings();
-        this.setupEventListeners();
-    }
-    
-    initializeProgressRings() {
-        const nutrients = ['calories', 'protein', 'carbs', 'fat'];
-        
-        nutrients.forEach(nutrient => {
-            const ring = document.querySelector(`.${nutrient}-card .progress-ring-progress`);
-            if (ring) {
-                const radius = ring.r.baseVal.value;
-                const circumference = radius * 2 * Math.PI;
-                
-                ring.style.strokeDasharray = `${circumference} ${circumference}`;
-                ring.style.strokeDashoffset = circumference;
-                
-                this.progressRings[nutrient] = {
-                    element: ring,
-                    circumference: circumference
-                };
-            }
-        });
-    }
-    
-    setupEventListeners() {
-        // Listen for profile updates
-        window.addEventListener('profileUpdated', (e) => {
-            if (e.detail.targets) {
-                this.updateTargets(e.detail.targets);
-            }
-        });
-        
-        // Listen for meal updates (we'll trigger this manually)
-        window.addEventListener('mealUpdated', (e) => {
-            if (e.detail && e.detail.totals) {
-                this.updateProgress(e.detail.totals);
-            }
-        });
-    }
-    
-    updateTargets(newTargets) {
-        this.dailyTargets = newTargets;
-        
-        // Update target displays
-        const displays = {
-            'target-calories-display': newTargets.calories,
-            'target-protein-display': newTargets.protein,
-            'target-carbs-display': newTargets.carbs,
-            'target-fat-display': newTargets.fat
-        };
-        
-        Object.entries(displays).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        });
-        
-        // Recalculate progress with new targets
-        this.updateProgress(this.currentTotals);
-    }
-    
-    updateProgress(nutritionTotals) {
-        this.currentTotals = nutritionTotals;
-        
-        // Update each nutrient progress
-        this.updateNutrientProgress('calories', nutritionTotals.calories);
-        this.updateNutrientProgress('protein', nutritionTotals.protein);
-        this.updateNutrientProgress('carbs', nutritionTotals.carbs);
-        this.updateNutrientProgress('fat', nutritionTotals.fat);
-        
-        // Update daily summary
-        this.updateDailySummary();
-        
-        // Add achievement animations
-        this.checkAchievements(nutritionTotals);
-    }
-    
-    updateNutrientProgress(nutrient, currentValue) {
-        const target = this.dailyTargets[nutrient];
-        const percentage = Math.min((currentValue / target) * 100, 100);
-        const remaining = Math.max(target - currentValue, 0);
-        
-        // Update ring progress
-        this.animateProgressRing(nutrient, percentage);
-        
-        // Update text values
-        const currentEl = document.getElementById(`current-${nutrient}`);
-        const percentEl = document.getElementById(`${nutrient}-percentage`);
-        const remainingEl = document.getElementById(`${nutrient}-remaining`);
-        
-        if (currentEl) currentEl.textContent = Math.round(currentValue);
-        if (percentEl) percentEl.textContent = Math.round(percentage) + '%';
-        
-        // Update remaining
-        const unit = nutrient === 'calories' ? '' : 'g';
-        if (remainingEl) {
-            remainingEl.textContent = remaining > 0 ? 
-                `${Math.round(remaining)}${unit} remaining` : 
-                `Goal reached! 🎉`;
-        }
-        
-        // Update card styling based on progress
-        this.updateCardStyling(nutrient, percentage);
-    }
-    
-    animateProgressRing(nutrient, percentage) {
-        const ring = this.progressRings[nutrient];
-        if (!ring) return;
-        
-        const offset = ring.circumference - (percentage / 100) * ring.circumference;
-        
-        // Smooth animation
-        ring.element.style.transition = 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-        ring.element.style.strokeDashoffset = offset;
-        
-        // Color coding based on progress
-        let strokeColor;
-        if (percentage >= 90) strokeColor = '#4CAF50'; // Green - excellent
-        else if (percentage >= 70) strokeColor = '#8BC34A'; // Light green - good
-        else if (percentage >= 50) strokeColor = '#FFC107'; // Yellow - okay
-        else if (percentage >= 25) strokeColor = '#FF9800'; // Orange - needs work
-        else strokeColor = '#F44336'; // Red - far from goal
-        
-        ring.element.style.stroke = strokeColor;
-    }
-    
-    updateCardStyling(nutrient, percentage) {
-        const card = document.querySelector(`.${nutrient}-card`);
-        if (!card) return;
-        
-        // Remove existing status classes
-        card.classList.remove('status-excellent', 'status-good', 'status-okay', 'status-needs-work', 'status-far');
-        
-        // Add appropriate status class
-        if (percentage >= 90) card.classList.add('status-excellent');
-        else if (percentage >= 70) card.classList.add('status-good');
-        else if (percentage >= 50) card.classList.add('status-okay');
-        else if (percentage >= 25) card.classList.add('status-needs-work');
-        else card.classList.add('status-far');
-    }
-    
-    updateDailySummary() {
-        const totals = this.currentTotals;
-        const targets = this.dailyTargets;
-        
-        // Calculate overall progress (weighted average)
-        const calorieProgress = (totals.calories / targets.calories) * 100;
-        const proteinProgress = (totals.protein / targets.protein) * 100;
-        const carbsProgress = (totals.carbs / targets.carbs) * 100;
-        const fatProgress = (totals.fat / targets.fat) * 100;
-        
-        const overallProgress = (calorieProgress + proteinProgress + carbsProgress + fatProgress) / 4;
-        
-        // Update overall status
-        let status, statusClass;
-        if (overallProgress >= 90) {
-            status = 'Excellent! 🎯';
-            statusClass = 'excellent';
-        } else if (overallProgress >= 70) {
-            status = 'On Track! 👍';
-            statusClass = 'good';
-        } else if (overallProgress >= 50) {
-            status = 'Making Progress 📈';
-            statusClass = 'okay';
-        } else if (overallProgress >= 25) {
-            status = 'Keep Going! 💪';
-            statusClass = 'needs-work';
-        } else {
-            status = 'Just Started 🌱';
-            statusClass = 'started';
-        }
-        
-        const statusEl = document.getElementById('overall-status');
-        const progressEl = document.getElementById('overall-progress');
-        const caloriesLeftEl = document.getElementById('calories-left');
-        
-        if (statusEl) {
-            statusEl.textContent = status;
-            statusEl.className = `stat-value ${statusClass}`;
-        }
-        if (progressEl) progressEl.textContent = Math.round(overallProgress) + '%';
-        
-        // Update calories left
-        const caloriesLeft = Math.max(targets.calories - totals.calories, 0);
-        if (caloriesLeftEl) caloriesLeftEl.textContent = Math.round(caloriesLeft);
-    }
-    
-    checkAchievements(totals) {
-        const targets = this.dailyTargets;
-        
-        // Check for goal achievements
-        Object.keys(targets).forEach(nutrient => {
-            const current = totals[nutrient];
-            const target = targets[nutrient];
-            const percentage = (current / target) * 100;
-            
-            // Achievement milestones
-            if (percentage >= 100 && !this.hasShownAchievement(nutrient, 100)) {
-                this.showAchievement(`🎉 ${nutrient.toUpperCase()} goal completed!`, 'gold');
-                this.markAchievementShown(nutrient, 100);
-            } else if (percentage >= 75 && !this.hasShownAchievement(nutrient, 75)) {
-                this.showAchievement(`🌟 75% of ${nutrient} goal reached!`, 'silver');
-                this.markAchievementShown(nutrient, 75);
-            } else if (percentage >= 50 && !this.hasShownAchievement(nutrient, 50)) {
-                this.showAchievement(`⭐ Halfway to ${nutrient} goal!`, 'bronze');
-                this.markAchievementShown(nutrient, 50);
-            }
-        });
-    }
-    
-    hasShownAchievement(nutrient, milestone) {
-        const today = new Date().toDateString();
-        const key = `achievement_${nutrient}_${milestone}_${today}`;
-        return localStorage.getItem(key) === 'shown';
-    }
-    
-    markAchievementShown(nutrient, milestone) {
-        const today = new Date().toDateString();
-        const key = `achievement_${nutrient}_${milestone}_${today}`;
-        localStorage.setItem(key, 'shown');
-    }
-    
-    showAchievement(message, type) {
-        const achievement = document.createElement('div');
-        achievement.className = `achievement-popup ${type}`;
-        achievement.innerHTML = `
-            <div class="achievement-content">
-                <div class="achievement-message">${message}</div>
-                <div class="achievement-close">&times;</div>
-            </div>
-        `;
-        
-        document.body.appendChild(achievement);
-        
-        // Animate in
-        setTimeout(() => achievement.classList.add('show'), 100);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            achievement.classList.remove('show');
-            setTimeout(() => achievement.remove(), 300);
-        }, 5000);
-        
-        // Close on click
-        achievement.querySelector('.achievement-close').addEventListener('click', () => {
-            achievement.classList.remove('show');
-            setTimeout(() => achievement.remove(), 300);
-        });
-    }
-}
-
-// =========================
-// Barcode Scanner
-// =========================
-class BarcodeScanner {
-    constructor() {
-        this.isScanning = false;
-        this.stream = null;
-        this.setupEventListeners();
-    }
-    
-    setupEventListeners() {
-        const scanBtn = document.getElementById('barcode-scan-btn');
-        if (scanBtn) {
-            scanBtn.addEventListener('click', () => {
-                this.startBarcodeScanning();
-            });
-        }
-        
-        const closeBtn = document.getElementById('close-scanner');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.stopScanning();
-            });
-        }
-    }
-    
-    async startBarcodeScanning() {
-        // Show modal first
-        const modal = document.getElementById('barcode-scanner-modal');
+    openModal() {
+        const modal = $('#barcode-modal');
         if (modal) {
-            modal.classList.remove('hidden');
-        }
-        
-        // For demo purposes, simulate barcode scanning
-        showToast('📱 Barcode scanning feature coming soon! For now, you can search manually.', 'info');
-        
-        // You can integrate with libraries like:
-        // - QuaggaJS for barcode scanning
-        // - ZXing for QR codes
-        // - Or use the experimental BarcodeDetector API
-        
-        setTimeout(() => {
-            if (modal) modal.classList.add('hidden');
-        }, 3000);
-    }
-    
-    stopScanning() {
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-            this.stream = null;
-        }
-        
-        const modal = document.getElementById('barcode-scanner-modal');
-        if (modal) {
-            modal.classList.add('hidden');
-        }
-        
-        this.isScanning = false;
-    }
-}
-
-// =========================
-// Voice Search
-// =========================
-class VoiceSearch {
-    constructor() {
-        this.isListening = false;
-        this.recognition = null;
-        this.setupVoiceRecognition();
-        this.setupEventListeners();
-    }
-    
-    setupVoiceRecognition() {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            this.recognition.lang = 'en-US';
-            
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                this.handleVoiceResult(transcript);
-            };
-            
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.stopListening();
-                showToast('Voice recognition error. Please try again.', 'error');
-            };
-            
-            this.recognition.onend = () => {
-                this.stopListening();
-            };
-        }
-    }
-    
-    setupEventListeners() {
-        const voiceBtn = document.getElementById('voice-search-btn');
-        if (voiceBtn) {
-            voiceBtn.addEventListener('click', () => {
-                if (this.isListening) {
-                    this.stopListening();
-                } else {
-                    this.startListening();
+            modal.classList.add('show');
+            this.initialize().then(success => {
+                if (success) {
+                    this.startScanning();
                 }
             });
         }
     }
     
-    startListening() {
-        if (!this.recognition) {
-            showToast('🎤 Voice search not supported in this browser', 'warning');
-            return;
-        }
-        
-        this.isListening = true;
-        const voiceBtn = document.getElementById('voice-search-btn');
-        if (voiceBtn) {
-            voiceBtn.textContent = '⏹️ Stop Listening';
-            voiceBtn.style.background = 'linear-gradient(45deg, #ff4757, #ff3742)';
-        }
-        
-        showToast('🎤 Listening... Speak now!', 'info');
-        this.recognition.start();
-    }
-    
-    stopListening() {
-        this.isListening = false;
-        const voiceBtn = document.getElementById('voice-search-btn');
-        if (voiceBtn) {
-            voiceBtn.textContent = '🎤 Voice Search';
-            voiceBtn.style.background = 'linear-gradient(45deg, #f093fb, #f5576c)';
-        }
-        
-        if (this.recognition) {
-            this.recognition.stop();
+    closeModal() {
+        const modal = $('#barcode-modal');
+        if (modal) {
+            modal.classList.remove('show');
+            this.stopScanning();
         }
     }
+}
+
+// ====================================
+// FOOD CATEGORY MANAGER
+// ====================================
+
+class CategoryManager {
+    constructor() {
+        this.currentCategory = null;
+        this.initializeEventListeners();
+    }
     
-    handleVoiceResult(transcript) {
-        const searchInput = document.getElementById('foodSearch');
+    initializeEventListeners() {
+        // Category button clicks
+        $$('.category-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const category = btn.getAttribute('data-category');
+                this.showCategoryFoods(category);
+            });
+        });
+    }
+    
+    showCategoryFoods(category) {
+        const foodList = $('#category-foods');
+        const foods = CATEGORY_FOODS[category];
+        
+        if (!foods || !foodList) return;
+        
+        // Update current category
+        this.currentCategory = category;
+        
+        // Highlight selected category
+        $$('.category-btn').forEach(btn => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-secondary');
+        });
+        $(`.category-btn[data-category="${category}"]`).classList.add('btn-success');
+        $(`.category-btn[data-category="${category}"]`).classList.remove('btn-secondary');
+        
+        // Populate food list
+        foodList.innerHTML = '';
+        
+        foods.forEach(food => {
+            const foodItem = this.createFoodItem(food);
+            foodList.appendChild(foodItem);
+        });
+        
+        // Show the food list
+        foodList.classList.add('show');
+        
+        // Scroll to food list
+        foodList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        
+        showToast(`Showing ${foods.length} ${category} items`, 'success');
+    }
+    
+    createFoodItem(food) {
+        const foodItem = createElement('div', { className: 'food-item' });
+        
+        const foodInfo = createElement('div', { className: 'food-info' });
+        const foodName = createElement('div', { className: 'food-name' }, [food.name]);
+        const foodNutrition = createElement('div', { 
+            className: 'food-nutrition' 
+        }, [`${food.calories} cal, ${food.protein}g protein, ${food.carbs}g carbs, ${food.fat}g fat`]);
+        
+        foodInfo.appendChild(foodName);
+        foodInfo.appendChild(foodNutrition);
+        
+        const addBtn = createElement('button', {
+            className: 'food-add-btn',
+            innerHTML: '+ Add'
+        });
+        
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.addFoodToMeal(food);
+        });
+        
+        foodItem.appendChild(foodInfo);
+        foodItem.appendChild(addBtn);
+        
+        // Also allow clicking on the item itself to add
+        foodItem.addEventListener('click', () => {
+            this.addFoodToMeal(food);
+        });
+        
+        return foodItem;
+    }
+    
+    addFoodToMeal(food) {
+        globalState.currentFoodForModal = food;
+        nutritionTracker.showQuantityModal();
+    }
+    
+    hideCategoryFoods() {
+        const foodList = $('#category-foods');
+        if (foodList) {
+            foodList.classList.remove('show');
+        }
+        
+        // Reset category highlighting
+        $$('.category-btn').forEach(btn => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-secondary');
+        });
+        
+        this.currentCategory = null;
+    }
+}
+
+// ====================================
+// NUTRITION TRACKER
+// ====================================
+
+class NutritionTracker {
+    constructor() {
+        this.initializeEventListeners();
+        this.updateAllProgress();
+    }
+    
+    initializeEventListeners() {
+        // Modal close buttons
+        $$('.modal-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                if (modal) modal.classList.remove('show');
+            });
+        });
+        
+        // Quantity modal
+        $('#confirm-add')?.addEventListener('click', () => this.addFoodFromModal());
+        $('#cancel-add')?.addEventListener('click', () => $('#quantity-modal').classList.remove('show'));
+        
+        // Custom food modal
+        $('#custom-food-form')?.addEventListener('submit', (e) => this.handleCustomFood(e));
+        $('#cancel-custom-food')?.addEventListener('click', () => $('#custom-food-modal').classList.remove('show'));
+        
+        // Import modal
+        $('#confirm-import')?.addEventListener('click', () => this.importMealData());
+        $('#cancel-import')?.addEventListener('click', () => $('#import-modal').classList.remove('show'));
+        
+        // Quick actions
+        $('#add-custom-food-btn')?.addEventListener('click', () => this.showCustomFoodModal());
+        $('#import-meal-btn')?.addEventListener('click', () => this.showImportModal());
+        $('#export-pdf-btn')?.addEventListener('click', () => this.exportToPDF());
+        $('#copy-meal-btn')?.addEventListener('click', () => this.copyMealData());
+        $('#export-json-btn')?.addEventListener('click', () => this.exportToJSON());
+        $('#clear-meal-btn')?.addEventListener('click', () => this.clearMeal());
+        
+        // Search functionality
+        const searchInput = $('#food-search');
         if (searchInput) {
-            searchInput.value = transcript;
-            showToast(`🎤 Heard: "${transcript}"`, 'success');
+            searchInput.addEventListener('input', debounce((e) => {
+                this.handleSearch(e.target.value);
+            }, 300));
+        }
+        
+        // Filter buttons
+        $$('[data-filter]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filter = e.target.getAttribute('data-filter');
+                this.setSearchFilter(filter);
+            });
+        });
+    }
+    
+    addFoodFromModal() {
+        if (!globalState.currentFoodForModal) return;
+        
+        const quantity = parseFloat($('#food-quantity')?.value) || 100;
+        const unit = $('#food-unit')?.value || 'grams';
+        
+        const food = { ...globalState.currentFoodForModal };
+        
+        // Calculate nutrition based on quantity
+        const multiplier = quantity / 100; // Assuming nutrition is per 100g
+        food.calories = Math.round(food.calories * multiplier);
+        food.protein = Math.round(food.protein * multiplier * 10) / 10;
+        food.carbs = Math.round(food.carbs * multiplier * 10) / 10;
+        food.fat = Math.round(food.fat * multiplier * 10) / 10;
+        food.quantity = quantity;
+        food.unit = unit;
+        
+        this.addFoodToMeal(food);
+        
+        // Close modal and reset
+        $('#quantity-modal').classList.remove('show');
+        globalState.currentFoodForModal = null;
+        $('#food-quantity').value = 100;
+    }
+    
+    addFoodToMeal(food) {
+        globalState.mealList.push({ ...food, id: Date.now() });
+        this.updateMealTable();
+        this.updateNutritionTotals();
+        this.updateAllProgress();
+        
+        showToast(`Added ${food.name} to your meal`, 'success');
+    }
+    
+    removeFoodFromMeal(index) {
+        if (index >= 0 && index < globalState.mealList.length) {
+            const food = globalState.mealList[index];
+            globalState.mealList.splice(index, 1);
+            this.updateMealTable();
+            this.updateNutritionTotals();
+            this.updateAllProgress();
             
-            // Trigger search
-            const event = new Event('input', { bubbles: true });
-            searchInput.dispatchEvent(event);
+            showToast(`Removed ${food.name} from your meal`, 'warning');
         }
-        
-        this.stopListening();
-    }
-}
-
-// Initialize app
-document.addEventListener('DOMContentLoaded', async () => {
-    initializeElements();
-    await loadDatabases();
-    buildSearchIndex();
-    setupEventListeners();
-    loadPersistedMeal();
-    updateTotals();
-    
-    // Initialize Enhanced User Profile (TDEE + targets)
-    try {
-        enhancedUserProfile = new EnhancedUserProfile();
-        advancedProgressTracker = new AdvancedProgressTracker();
-        
-        // Initialize new button functionality
-        new BarcodeScanner();
-        new VoiceSearch();
-        
-        if (isDebugMode) console.log('✅ Enhanced systems initialized');
-    } catch (error) {
-        console.error('Failed to initialize enhanced systems:', error);
     }
     
-    if (isDebugMode) console.log('🐛 Debug mode enabled');
-});
-
-function initializeElements() {
-    elements.searchInput = document.getElementById('foodSearch');
-    elements.suggestions = document.getElementById('suggestions');
-    elements.mealTbody = document.getElementById('mealTbody');
-    elements.totalCals = document.getElementById('totalCals');
-    elements.totalProtein = document.getElementById('totalProtein');
-    elements.totalCarbs = document.getElementById('totalCarbs');
-    elements.totalFat = document.getElementById('totalFat');
-    elements.tdeeInput = document.getElementById('tdeeInput');
-    elements.tdeeBar = document.getElementById('tdeeBar');
-    elements.tdeePercent = document.getElementById('tdeePercent');
-    elements.quantityModal = document.getElementById('quantityModal');
-    elements.customFoodModal = document.getElementById('customFoodModal');
-    elements.importModal = document.getElementById('importModal');
-}
-
-async function loadDatabases() {
-    try {
-        // Load all JSON databases
-        const [foodsResponse, fssaiResponse, mealsResponse] = await Promise.all([
-            fetch('foods.json').catch(() => ({ ok: false })),
-            fetch('localFSSAI.json').catch(() => ({ ok: false })),
-            fetch('meal.json').catch(() => ({ ok: false }))
-        ]);
-
-        if (foodsResponse.ok) {
-            foodDatabase = await foodsResponse.json();
-            if (isDebugMode) console.log('Loaded foods.json:', foodDatabase.length, 'items');
-        }
-
-        if (fssaiResponse.ok) {
-            fssaiDatabase = await fssaiResponse.json();
-            if (isDebugMode) console.log('Loaded localFSSAI.json:', fssaiDatabase.length, 'items');
-        }
-
-        if (mealsResponse.ok) {
-            mealDatabase = await mealsResponse.json();
-            if (isDebugMode) console.log('Loaded meal.json:', mealDatabase.length, 'items');
-        }
-    } catch (error) {
-        console.error('Error loading databases:', error);
-        showToast('Error loading food databases', 'error');
-    }
-}
-
-function buildSearchIndex() {
-    searchIndex = [];
-
-    // Add meal database items
-    mealDatabase.forEach(item => {
-        searchIndex.push({
-            ...item,
-            searchName: item.name.toLowerCase(),
-            source_type: 'meal'
-        });
-    });
-
-    // Add FSSAI database items
-    fssaiDatabase.forEach(item => {
-        searchIndex.push({
-            ...item,
-            searchName: item.name.toLowerCase(),
-            source_type: 'fssai'
-        });
-    });
-
-    // Add general food database items
-    foodDatabase.forEach(item => {
-        searchIndex.push({
-            ...item,
-            searchName: item.name.toLowerCase(),
-            source_type: 'local'
-        });
-    });
-
-    if (isDebugMode) console.log('Built search index with', searchIndex.length, 'items');
-}
-
-function setupEventListeners() {
-    // Search input with debouncing
-    elements.searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const query = e.target.value.trim();
+    updateMealTable() {
+        const tbody = $('#meal-table');
+        if (!tbody) return;
         
-        if (query.length < 2) {
-            hideSuggestions();
+        if (globalState.mealList.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-muted">
+                        No items added yet. Search and add foods to get started.
+                    </td>
+                </tr>
+            `;
             return;
         }
         
-        searchTimeout = setTimeout(() => performSearch(query), 300);
-    });
-
-    // Search input keyboard navigation
-    elements.searchInput.addEventListener('keydown', handleSearchKeydown);
-
-    // Click outside to hide suggestions
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#foodSearch') && !e.target.closest('#suggestions')) {
-            hideSuggestions();
-        }
-    });
-
-    // TDEE input
-    elements.tdeeInput.addEventListener('input', updateTDEEComparison);
-
-    // Button event listeners
-    document.getElementById('btnAddCustom').addEventListener('click', openCustomFoodModal);
-    document.getElementById('btnImportMeal').addEventListener('click', openImportModal);
-    document.getElementById('btnDownloadMeal').addEventListener('click', downloadMealPDF);
-    document.getElementById('btnCopyMeal').addEventListener('click', copyMealJSON);
-    document.getElementById('btnExportMeal').addEventListener('click', exportMealJSON);
-    document.getElementById('btnClearMeal').addEventListener('click', clearMeal);
-
-    // Setup filter buttons
-    setupFilterButtons();
-    
-    // Setup category buttons
-    setupCategoryButtons();
-
-    // Modal event listeners
-    setupModalEventListeners();
-}
-
-// =========================
-// Filter Buttons Functionality
-// =========================
-function setupFilterButtons() {
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // Update active state
-            filterButtons.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            
-            // Update current filter
-            currentSearchFilter = e.target.dataset.source || 'all';
-            
-            // Re-run search if there's a query
-            const searchValue = elements.searchInput.value.trim();
-            if (searchValue.length >= 2) {
-                performSearch(searchValue);
-            }
-            
-            showToast(`Filter set to: ${e.target.textContent}`, 'info');
-        });
-    });
-}
-
-// =========================
-// Category Buttons Functionality  
-// =========================
-function setupCategoryButtons() {
-    const categoryButtons = document.querySelectorAll('.category-btn');
-    categoryButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const category = e.target.dataset.category;
-            if (category && CATEGORY_FOODS[category]) {
-                showCategoryFoods(category, CATEGORY_FOODS[category]);
-            }
-        });
-    });
-}
-
-function showCategoryFoods(categoryName, foods) {
-    // Clear search input
-    elements.searchInput.value = '';
-    
-    // Create enhanced food objects
-    const enhancedFoods = foods.map(food => ({
-        ...food,
-        id: `${categoryName}-${food.name.toLowerCase().replace(/\s+/g, '-')}`,
-        serving_size: '100g',
-        serving_grams: 100,
-        source: 'Quick Add',
-        origin: 'Category',
-        source_type: 'category',
-        last_updated: new Date().toISOString().split('T')[0]
-    }));
-    
-    // Display as suggestions
-    displaySuggestions(enhancedFoods, '');
-    
-    showToast(`Showing ${categoryName} foods`, 'success');
-}
-
-function setupModalEventListeners() {
-    // Quantity Modal
-    const quantityModal = elements.quantityModal;
-    document.getElementById('modalCancel').addEventListener('click', () => closeModal(quantityModal));
-    document.getElementById('modalConfirm').addEventListener('click', confirmAddFood);
-    document.getElementById('modalQuantity').addEventListener('input', updateModalPreview);
-    document.getElementById('modalUnit').addEventListener('change', updateModalPreview);
-
-    // Close modal on backdrop click
-    quantityModal.addEventListener('click', (e) => {
-        if (e.target === quantityModal) closeModal(quantityModal);
-    });
-
-    // Custom Food Modal
-    const customFoodModal = elements.customFoodModal;
-    document.getElementById('customModalCancel').addEventListener('click', () => closeModal(customFoodModal));
-    document.getElementById('customModalConfirm').addEventListener('click', addCustomFood);
-    customFoodModal.addEventListener('click', (e) => {
-        if (e.target === customFoodModal) closeModal(customFoodModal);
-    });
-
-    // Import Modal
-    const importModal = elements.importModal;
-    document.getElementById('importModalCancel').addEventListener('click', () => closeModal(importModal));
-    document.getElementById('importModalConfirm').addEventListener('click', importMealData);
-    importModal.addEventListener('click', (e) => {
-        if (e.target === importModal) closeModal(importModal);
-    });
-
-    // ESC key to close modals
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            if (!quantityModal.classList.contains('hidden')) closeModal(quantityModal);
-            if (!customFoodModal.classList.contains('hidden')) closeModal(customFoodModal);
-            if (!importModal.classList.contains('hidden')) closeModal(importModal);
-            
-            // Close barcode scanner modal
-            const barcodeModal = document.getElementById('barcode-scanner-modal');
-            if (barcodeModal && !barcodeModal.classList.contains('hidden')) {
-                barcodeModal.classList.add('hidden');
-            }
-        }
-    });
-}
-
-async function performSearch(query) {
-    if (isDebugMode) console.log('🔍 Searching for:', query);
-    const lowQuery = query.toLowerCase();
-    let results = [];
-
-    // Apply filter
-    let filteredIndex = searchIndex;
-    if (currentSearchFilter !== 'all') {
-        filteredIndex = searchIndex.filter(item => {
-            switch (currentSearchFilter) {
-                case 'local':
-                    return item.source_type === 'local';
-                case 'fssai':
-                    return item.source_type === 'fssai';
-                case 'usda':
-                    return item.source_type === 'usda';
-                case 'branded':
-                    return item.source_type === 'branded' || item.source_type === 'meal';
-                default:
-                    return true;
-            }
-        });
-    }
-
-    // 1. Search filtered database
-    const localResults = filteredIndex
-        .filter(item => item.searchName.includes(lowQuery))
-        .slice(0, 6);
-    results.push(...localResults);
-
-    // 2. If still need more results and filter allows, search USDA
-    if (results.length < 6 && (currentSearchFilter === 'all' || currentSearchFilter === 'usda')) {
-        try {
-            const usdaResults = await searchUSDA(query);
-            results.push(...usdaResults.slice(0, 6 - results.length));
-        } catch (error) {
-            console.error('USDA search failed:', error);
-            showToast('USDA lookup unavailable — showing local results', 'warning');
-        }
-    }
-
-    displaySuggestions(results, lowQuery);
-}
-
-async function searchUSDA(query) {
-    // Check cache first
-    const cacheKey = `usda-search-${query}`;
-    const cached = getCachedData(cacheKey);
-    if (cached) {
-        if (isDebugMode) console.log('Using cached USDA search for:', query);
-        return cached;
-    }
-
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=${USDA_PAGE_SIZE}&api_key=${USDA_API_KEY}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-    try {
-        const response = await fetch(url, { 
-            signal: controller.signal,
-            headers: { 'Accept': 'application/json' }
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            if (response.status === 429) {
-                throw new Error('Rate limit exceeded');
-            }
-            throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const results = data.foods?.map(food => mapUSDAFoodToLocal(food)) || [];
-
-        // Cache results
-        setCachedData(cacheKey, results);
-
-        if (isDebugMode) console.log('USDA API returned', results.length, 'items');
-        return results;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            throw new Error('Request timeout');
-        }
-        throw error;
-    }
-}
-
-function mapUSDAFoodToLocal(usdaFood) {
-    const nutrients = usdaFood.foodNutrients || [];
-
-    // Map USDA nutrient codes to our schema
-    const getNutrientValue = (codes) => {
-        const nutrient = nutrients.find(n => codes.includes(n.nutrientId));
-        return nutrient ? nutrient.value : 0;
-    };
-
-    return {
-        id: `usda-${usdaFood.fdcId}`,
-        name: usdaFood.description || 'Unknown food',
-        calories: getNutrientValue([1008, 1062]), // Energy kcal
-        protein: getNutrientValue([1003]), // Protein
-        carbs: getNutrientValue([1005, 1050]), // Carbohydrate, by difference
-        fat: getNutrientValue([1004]), // Total lipid (fat)
-        serving_size: '100 g',
-        serving_grams: 100,
-        source: 'USDA',
-        origin: 'US',
-        last_updated: new Date().toISOString().split('T')[0],
-        label_url: '',
-        source_type: 'usda',
-        confidence: usdaFood.score || 0,
-        source_raw: usdaFood
-    };
-}
-
-function displaySuggestions(results, query) {
-    if (results.length === 0) {
-        elements.suggestions.innerHTML = `
-            <div class="no-results">
-                <div class="no-results-icon">🔍</div>
-                <div class="no-results-text">No foods found</div>
-                <div class="no-results-suggestion">Try a different search term or <button class="link-btn" onclick="openCustomFoodModal()">add custom food</button></div>
-            </div>
-        `;
-        elements.suggestions.classList.remove('hidden');
-        return;
-    }
-
-    const html = results.map((item, index) => {
-        const icon = getSourceIcon(item);
-        const badge = getSourceBadge(item);
-        const highlightedName = highlightMatch(item.name, query);
-        const calories = item.calories ? `${Math.round(item.calories)} cal/100g` : 'No cal info';
-
-        return `
-            <div class="suggestion-item px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between"
-                 data-index="${index}" role="option" tabindex="-1">
-                <div class="flex items-center space-x-3 flex-1">
-                    <span class="text-lg">${icon}</span>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 truncate">${highlightedName}</div>
-                        <div class="flex items-center space-x-2 mt-1">
-                            ${badge}
-                            <span class="text-xs text-gray-500">${calories}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    elements.suggestions.innerHTML = html;
-    elements.suggestions.classList.remove('hidden');
-    elements.searchInput.setAttribute('aria-expanded', 'true');
-
-    // Add click listeners to suggestions
-    elements.suggestions.querySelectorAll('.suggestion-item').forEach((item, index) => {
-        item.addEventListener('click', () => selectSuggestion(results[index]));
-    });
-
-    currentSuggestionIndex = -1;
-}
-
-function getSourceIcon(item) {
-    switch (item.source_type || item.source) {
-        case 'meal':
-        case 'Meal Planner': return '🍲';
-        case 'fssai':
-        case 'FSSAI': return '🥤';
-        case 'usda':
-        case 'USDA': return '🍗';
-        case 'category': return '⭐';
-        default: return '🥗';
-    }
-}
-
-function getSourceBadge(item) {
-    const source = item.source_type || item.source;
-    switch (source) {
-        case 'meal':
-        case 'Meal Planner':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Meal Planner</span>';
-        case 'fssai':
-        case 'FSSAI':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">🇮🇳 FSSAI</span>';
-        case 'usda':
-        case 'USDA':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">🇺🇸 USDA</span>';
-        case 'category':
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">Quick Add</span>';
-        default:
-            return '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Local</span>';
-    }
-}
-
-function highlightMatch(text, query) {
-  if (!query) return text;
-  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-  return text.replace(regex, '<mark class="bg-yellow-200">$1</mark>');
-}
-
-function escapeRegex(string) {
-    if (!string) return '';
-    return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-
-
-
-function handleSearchKeydown(e) {
-    const suggestionItems = elements.suggestions.querySelectorAll('.suggestion-item');
-    
-    switch (e.key) {
-        case 'ArrowDown':
-            e.preventDefault();
-            currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestionItems.length - 1);
-            updateSuggestionHighlight(suggestionItems);
-            break;
-        case 'ArrowUp':
-            e.preventDefault();
-            currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
-            updateSuggestionHighlight(suggestionItems);
-            break;
-        case 'Enter':
-            e.preventDefault();
-            if (currentSuggestionIndex >= 0 && suggestionItems[currentSuggestionIndex]) {
-                suggestionItems[currentSuggestionIndex].click();
-            }
-            break;
-        case 'Escape':
-            hideSuggestions();
-            break;
-    }
-}
-
-function updateSuggestionHighlight(items) {
-    items.forEach((item, index) => {
-        if (index === currentSuggestionIndex) {
-            item.classList.add('bg-blue-50', 'keyboard-selected');
-            item.setAttribute('aria-selected', 'true');
-        } else {
-            item.classList.remove('bg-blue-50', 'keyboard-selected');
-            item.setAttribute('aria-selected', 'false');
-        }
-    });
-}
-
-function hideSuggestions() {
-    elements.suggestions.classList.add('hidden');
-    elements.searchInput.setAttribute('aria-expanded', 'false');
-    currentSuggestionIndex = -1;
-}
-
-function selectSuggestion(food) {
-    currentFoodForModal = food;
-    currentEditIndex = -1;
-    openQuantityModal();
-    hideSuggestions();
-    elements.searchInput.value = '';
-}
-
-function openQuantityModal() {
-    const food = currentFoodForModal;
-    if (!food) return;
-
-    // Populate food info
-    const foodInfoEl = document.getElementById('modalFoodInfo');
-    foodInfoEl.innerHTML = `
-        <div class="flex items-center space-x-3">
-            <span class="text-2xl">${getSourceIcon(food)}</span>
-            <div class="flex-1">
-                <h4 class="font-medium text-gray-900">${food.name}</h4>
-                <div class="flex items-center space-x-2 mt-1">
-                    ${getSourceBadge(food)}
-                    ${food.last_updated ? `<span class="text-xs text-gray-500">Updated: ${food.last_updated}</span>` : ''}
-                </div>
-                <div class="text-sm text-gray-600 mt-1">
-                    ${Math.round(food.calories || 0)} cal, ${(food.protein || 0).toFixed(1)}g protein per 100g
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Reset form
-    document.getElementById('modalQuantity').value = currentEditIndex >= 0 ? mealList[currentEditIndex].quantity : 100;
-    document.getElementById('modalUnit').value = currentEditIndex >= 0 ? mealList[currentEditIndex].unit : 'g';
-
-    // Set up unit options
-    const unitSelect = document.getElementById('modalUnit');
-    unitSelect.innerHTML = '<option value="g">grams (g)</option><option value="ml">milliliters (ml)</option>';
-    
-    if (food.serving_grams && food.serving_grams > 0) {
-        unitSelect.innerHTML += `<option value="piece">pieces (${food.serving_grams}g each)</option>`;
-    } else {
-        unitSelect.innerHTML += '<option value="piece">pieces</option>';
-    }
-
-    updateModalPreview();
-    showModal(elements.quantityModal);
-}
-
-function updateModalPreview() {
-    const food = currentFoodForModal;
-    if (!food) return;
-
-    const quantity = parseFloat(document.getElementById('modalQuantity').value) || 0;
-    const unit = document.getElementById('modalUnit').value;
-
-    let grams = quantity;
-    let conversionNote = '';
-
-    if (unit === 'ml') {
-        grams = quantity; // Assume 1ml ≈ 1g for most foods
-        conversionNote = ' (assuming 1ml ≈ 1g)';
-    } else if (unit === 'piece') {
-        const servingGrams = food.serving_grams || 50; // Default piece size
-        grams = quantity * servingGrams;
-        conversionNote = ` (${servingGrams}g per piece)`;
-    }
-
-    const factor = grams / 100;
-    const calories = Math.round((food.calories || 0) * factor);
-    const protein = ((food.protein || 0) * factor).toFixed(1);
-    const carbs = ((food.carbs || 0) * factor).toFixed(1);
-    const fat = ((food.fat || 0) * factor).toFixed(1);
-
-    const previewEl = document.getElementById('modalPreview');
-    previewEl.innerHTML = `
-        <div class="text-sm">
-            <div class="font-medium text-blue-900 mb-2">
-                ${quantity} ${unit} = ${grams.toFixed(0)}g${conversionNote}
-            </div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                <div>Calories: <span class="font-medium">${calories}</span></div>
-                <div>Protein: <span class="font-medium">${protein}g</span></div>
-                <div>Carbs: <span class="font-medium">${carbs}g</span></div>
-                <div>Fat: <span class="font-medium">${fat}g</span></div>
-            </div>
-        </div>
-    `;
-}
-
-function confirmAddFood() {
-    const food = currentFoodForModal;
-    if (!food) return;
-
-    const quantity = parseFloat(document.getElementById('modalQuantity').value);
-    const unit = document.getElementById('modalUnit').value;
-
-    if (!quantity || quantity <= 0) {
-        showToast('Please enter a valid quantity', 'error');
-        return;
-    }
-
-    // Calculate grams
-    let grams = quantity;
-    if (unit === 'ml') {
-        grams = quantity; // Assume 1ml ≈ 1g
-    } else if (unit === 'piece') {
-        const servingGrams = food.serving_grams || 50;
-        grams = quantity * servingGrams;
-    }
-
-    // Calculate nutrients
-    const factor = grams / 100;
-    const mealItem = {
-        id: food.id,
-        name: food.name,
-        quantity: quantity,
-        unit: unit,
-        grams: grams,
-        calories: (food.calories || 0) * factor,
-        protein: (food.protein || 0) * factor,
-        carbs: (food.carbs || 0) * factor,
-        fat: (food.fat || 0) * factor,
-        source: food.source || 'Local',
-        origin: food.origin || '',
-        originalFood: food
-    };
-
-    if (currentEditIndex >= 0) {
-        mealList[currentEditIndex] = mealItem;
-        showToast('Food updated successfully', 'success');
-    } else {
-        mealList.push(mealItem);
-        showToast('Food added to meal', 'success');
-    }
-
-    updateMealDisplay();
-    updateTotals();
-    persistMeal();
-    closeModal(elements.quantityModal);
-}
-
-function updateMealDisplay() {
-    const tbody = elements.mealTbody;
-    
-    if (mealList.length === 0) {
-        tbody.innerHTML = `
-            <tr id="emptyMealRow">
-                <td colspan="7" class="px-4 py-8 text-center text-gray-500">
-                    No items added yet. Search and add foods to get started.
-                </td>
-            </tr>
-        `;
-        updateExportButtons(false);
-        return;
-    }
-
-    const html = mealList.map((item, index) => `
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3">
-                <div class="flex items-center space-x-2">
-                    <span class="text-sm">${getSourceIcon(item.originalFood)}</span>
-                    <div>
-                        <div class="text-sm font-medium text-gray-900">${item.name}</div>
-                        <div class="text-xs text-gray-500">${getSourceBadge(item.originalFood)}</div>
-                    </div>
-                </div>
-            </td>
-            <td class="px-4 py-3 text-sm text-gray-900">
-                ${item.quantity} ${item.unit}
-                ${item.grams !== item.quantity ? `<div class="text-xs text-gray-500">(${Math.round(item.grams)}g)</div>` : ''}
-            </td>
-            <td class="px-4 py-3 text-sm font-medium text-gray-900">${Math.round(item.calories)}</td>
-            <td class="px-4 py-3 text-sm text-gray-900">${item.protein.toFixed(1)}g</td>
-            <td class="px-4 py-3 text-sm text-gray-900">${item.carbs.toFixed(1)}g</td>
-            <td class="px-4 py-3 text-sm text-gray-900">${item.fat.toFixed(1)}g</td>
-            <td class="px-4 py-3 text-sm font-medium">
-                <button onclick="editMealItem(${index})" class="text-indigo-600 hover:text-indigo-900 mr-2">Edit</button>
-                <button onclick="removeMealItem(${index})" class="text-red-600 hover:text-red-900">Remove</button>
-            </td>
-        </tr>
-    `).join('');
-
-    tbody.innerHTML = html;
-    updateExportButtons(true);
-}
-
-function editMealItem(index) {
-    currentEditIndex = index;
-    currentFoodForModal = mealList[index].originalFood;
-    openQuantityModal();
-}
-
-function removeMealItem(index) {
-    mealList.splice(index, 1);
-    updateMealDisplay();
-    updateTotals();
-    persistMeal();
-    showToast('Item removed from meal', 'success');
-}
-
-function updateTotals() {
-    const totals = mealList.reduce((acc, item) => ({
-        calories: acc.calories + item.calories,
-        protein: acc.protein + item.protein,
-        carbs: acc.carbs + item.carbs,
-        fat: acc.fat + item.fat
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-
-    elements.totalCals.textContent = Math.round(totals.calories);
-    elements.totalProtein.textContent = totals.protein.toFixed(1) + 'g';
-    elements.totalCarbs.textContent = totals.carbs.toFixed(1) + 'g';
-    elements.totalFat.textContent = totals.fat.toFixed(1) + 'g';
-
-    updateTDEEComparison();
-    
-    // Update advanced progress tracker
-    if (advancedProgressTracker) {
-        advancedProgressTracker.updateProgress(totals);
-    }
-}
-
-function updateTDEEComparison() {
-    const tdee = parseFloat(elements.tdeeInput.value);
-    const currentCalories = mealList.reduce((sum, item) => sum + item.calories, 0);
-
-    if (!tdee || tdee <= 0) {
-        elements.tdeePercent.textContent = '0%';
-        elements.tdeeBar.style.width = '0%';
-        return;
-    }
-
-    const percentage = Math.min((currentCalories / tdee) * 100, 200);
-    elements.tdeePercent.textContent = percentage.toFixed(1) + '%';
-    elements.tdeeBar.style.width = percentage + '%';
-
-    // Change color based on progress
-    const bar = elements.tdeeBar;
-    bar.className = bar.className.replace(/bg-(red|yellow|green|blue)-\d+/, '');
-    
-    if (percentage < 80) {
-        bar.classList.add('bg-blue-600');
-    } else if (percentage <= 100) {
-        bar.classList.add('bg-green-600');
-    } else if (percentage <= 120) {
-        bar.classList.add('bg-yellow-600');
-    } else {
-        bar.classList.add('bg-red-600');
-    }
-}
-
-function updateExportButtons(enabled) {
-    const buttons = ['btnDownloadMeal', 'btnCopyMeal', 'btnExportMeal'];
-    buttons.forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.disabled = !enabled;
-            if (enabled) {
-                btn.classList.remove('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
-            } else {
-                btn.classList.add('disabled:bg-gray-300', 'disabled:cursor-not-allowed');
-            }
-        }
-    });
-}
-
-async function downloadMealPDF() {
-    if (mealList.length === 0) {
-        showToast('No items to export', 'warning');
-        return;
-    }
-
-    try {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF();
-
-        // Header
-        pdf.setFontSize(18);
-        pdf.text('Enhanced Nutrition Report', 20, 20);
-        pdf.setFontSize(10);
-        pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
-
-        // Profile info if available
-        if (enhancedUserProfile?.userData) {
-            const profile = enhancedUserProfile.userData;
-            pdf.text(`Profile: ${profile.age}y, ${profile.gender}, ${profile.weight}kg, ${profile.height}cm`, 20, 40);
-        }
-
-        // Totals
-        const totals = mealList.reduce((acc, item) => ({
-            calories: acc.calories + item.calories,
-            protein: acc.protein + item.protein,
-            carbs: acc.carbs + item.carbs,
-            fat: acc.fat + item.fat
-        }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-
-        pdf.setFontSize(12);
-        pdf.text('NUTRITION TOTALS', 20, 55);
-        pdf.setFontSize(10);
-        pdf.text(`Calories: ${Math.round(totals.calories)}`, 20, 65);
-        pdf.text(`Protein: ${totals.protein.toFixed(1)}g`, 70, 65);
-        pdf.text(`Carbs: ${totals.carbs.toFixed(1)}g`, 20, 75);
-        pdf.text(`Fat: ${totals.fat.toFixed(1)}g`, 70, 75);
-
-        // TDEE comparison
-        const tdee = parseFloat(elements.tdeeInput.value);
-        if (tdee > 0) {
-            const percentage = (totals.calories / tdee * 100).toFixed(1);
-            pdf.text(`TDEE Progress: ${percentage}% (${Math.round(totals.calories)}/${tdee} calories)`, 20, 85);
-        }
-
-        // Food items
-        pdf.setFontSize(12);
-        pdf.text('FOOD ITEMS', 20, 100);
+        tbody.innerHTML = '';
         
-        let yPos = 110;
-        mealList.forEach((item, index) => {
-            if (yPos > 270) {
-                pdf.addPage();
-                yPos = 20;
-            }
+        globalState.mealList.forEach((food, index) => {
+            const row = createElement('tr');
             
-            pdf.setFontSize(10);
-            pdf.text(`${index + 1}. ${item.name}`, 20, yPos);
-            pdf.text(`${item.quantity} ${item.unit} | ${Math.round(item.calories)} cal`, 20, yPos + 7);
-            pdf.text(`P: ${item.protein.toFixed(1)}g | C: ${item.carbs.toFixed(1)}g | F: ${item.fat.toFixed(1)}g`, 20, yPos + 14);
-            pdf.setFontSize(8);
-            pdf.text(`Source: ${item.source}`, 20, yPos + 21);
-            yPos += 30;
+            row.innerHTML = `
+                <td>${food.name}</td>
+                <td>${food.quantity || 100}${food.unit ? ` ${food.unit}` : 'g'}</td>
+                <td>${food.calories}</td>
+                <td>${food.protein}g</td>
+                <td>${food.carbs}g</td>
+                <td>${food.fat}g</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="nutritionTracker.removeFoodFromMeal(${index})">
+                        Remove
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
         });
-
-        pdf.save(`enhanced-nutrition-${new Date().toISOString().split('T')[0]}.pdf`);
-        showToast('Enhanced PDF downloaded successfully', 'success');
-    } catch (error) {
-        console.error('PDF generation error:', error);
-        showToast('Error generating PDF', 'error');
     }
-}
-
-function copyMealJSON() {
-    if (mealList.length === 0) {
-        showToast('No meal to copy', 'warning');
-        return;
+    
+    updateNutritionTotals() {
+        const totals = globalState.mealList.reduce((sum, food) => ({
+            calories: sum.calories + (food.calories || 0),
+            protein: sum.protein + (food.protein || 0),
+            carbs: sum.carbs + (food.carbs || 0),
+            fat: sum.fat + (food.fat || 0)
+        }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+        
+        if ($('#total-calories')) $('#total-calories').textContent = Math.round(totals.calories);
+        if ($('#total-protein')) $('#total-protein').textContent = Math.round(totals.protein * 10) / 10 + 'g';
+        if ($('#total-carbs')) $('#total-carbs').textContent = Math.round(totals.carbs * 10) / 10 + 'g';
+        if ($('#total-fat')) $('#total-fat').textContent = Math.round(totals.fat * 10) / 10 + 'g';
     }
-
-    try {
-        const jsonData = JSON.stringify(mealList, null, 2);
-        navigator.clipboard.writeText(jsonData);
-        showToast('Meal JSON copied to clipboard', 'success');
-    } catch (error) {
-        console.error('Copy error:', error);
-        showToast('Error copying to clipboard', 'error');
+    
+    updateAllProgress() {
+        const totals = globalState.mealList.reduce((sum, food) => ({
+            calories: sum.calories + (food.calories || 0),
+            protein: sum.protein + (food.protein || 0),
+            carbs: sum.carbs + (food.carbs || 0),
+            fat: sum.fat + (food.fat || 0)
+        }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+        
+        this.updateProgressCircle('calories', totals.calories, globalState.dailyTargets.calories);
+        this.updateProgressCircle('protein', totals.protein, globalState.dailyTargets.protein);
+        this.updateProgressCircle('carbs', totals.carbs, globalState.dailyTargets.carbs);
+        this.updateProgressCircle('fat', totals.fat, globalState.dailyTargets.fat);
     }
-}
-
-function exportMealJSON() {
-    if (mealList.length === 0) {
-        showToast('No meal to export', 'warning');
-        return;
+    
+    updateProgressCircle(nutrient, current, target) {
+        const percentage = Math.min((current / target) * 100, 100);
+        const remaining = Math.max(target - current, 0);
+        
+        // Update progress circle
+        const circle = $(`#${nutrient}-progress`);
+        if (circle) {
+            const circumference = 314; // 2 * pi * 50 (radius)
+            const offset = circumference - (percentage / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+        
+        // Update text
+        const currentEl = $(`#current-${nutrient}`);
+        const remainingEl = $(`#${nutrient}-remaining`);
+        
+        if (currentEl) {
+            if (nutrient === 'calories') {
+                currentEl.textContent = Math.round(current);
+            } else {
+                currentEl.textContent = Math.round(current * 10) / 10;
+            }
+        }
+        
+        if (remainingEl) {
+            if (nutrient === 'calories') {
+                remainingEl.textContent = Math.round(remaining) + ' remaining';
+            } else {
+                remainingEl.textContent = Math.round(remaining * 10) / 10 + 'g remaining';
+            }
+        }
     }
-
-    try {
-        const exportData = {
-            version: '2.1',
-            timestamp: new Date().toISOString(),
-            meals: mealList,
-            profile: enhancedUserProfile?.userData || null
+    
+    showQuantityModal() {
+        const modal = $('#quantity-modal');
+        if (modal) modal.classList.add('show');
+    }
+    
+    showCustomFoodModal() {
+        const modal = $('#custom-food-modal');
+        if (modal) modal.classList.add('show');
+    }
+    
+    showImportModal() {
+        const modal = $('#import-modal');
+        if (modal) modal.classList.add('show');
+    }
+    
+    handleCustomFood(e) {
+        e.preventDefault();
+        
+        const food = {
+            name: $('#custom-food-name')?.value || 'Custom Food',
+            calories: parseFloat($('#custom-calories')?.value) || 0,
+            protein: parseFloat($('#custom-protein')?.value) || 0,
+            carbs: parseFloat($('#custom-carbs')?.value) || 0,
+            fat: parseFloat($('#custom-fat')?.value) || 0
         };
         
-        const jsonData = JSON.stringify(exportData, null, 2);
-        const blob = new Blob([jsonData], { type: 'application/json' });
+        globalState.currentFoodForModal = food;
+        this.showQuantityModal();
+        $('#custom-food-modal').classList.remove('show');
+        
+        // Reset form
+        $('#custom-food-form')?.reset();
+    }
+    
+    importMealData() {
+        try {
+            const data = $('#import-data')?.value;
+            if (!data) {
+                showToast('Please enter valid JSON data', 'danger');
+                return;
+            }
+            
+            const foods = JSON.parse(data);
+            if (!Array.isArray(foods)) {
+                throw new Error('Data must be an array');
+            }
+            
+            globalState.mealList = [...globalState.mealList, ...foods];
+            this.updateMealTable();
+            this.updateNutritionTotals();
+            this.updateAllProgress();
+            
+            $('#import-modal').classList.remove('show');
+            $('#import-data').value = '';
+            
+            showToast(`Imported ${foods.length} food items`, 'success');
+        } catch (error) {
+            showToast('Invalid JSON data. Please check format.', 'danger');
+            console.error('Import error:', error);
+        }
+    }
+    
+    exportToPDF() {
+        // This would typically use a PDF library like jsPDF
+        showToast('PDF export feature coming soon!', 'warning');
+    }
+    
+    copyMealData() {
+        try {
+            const data = JSON.stringify(globalState.mealList, null, 2);
+            navigator.clipboard.writeText(data);
+            showToast('Meal data copied to clipboard', 'success');
+        } catch (error) {
+            showToast('Failed to copy to clipboard', 'danger');
+        }
+    }
+    
+    exportToJSON() {
+        const data = JSON.stringify(globalState.mealList, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `enhanced-meal-${new Date().toISOString().split('T')[0]}.json`;
+        const a = createElement('a', {
+            href: url,
+            download: 'meal-data.json'
+        });
+        
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showToast('Enhanced meal data exported successfully', 'success');
-    } catch (error) {
-        console.error('Export error:', error);
-        showToast('Error exporting meal', 'error');
+        showToast('Meal data exported as JSON', 'success');
     }
-}
-
-function clearMeal() {
-    if (mealList.length === 0) return;
     
-    if (confirm('Are you sure you want to clear all items from your meal?')) {
-        mealList = [];
-        updateMealDisplay();
-        updateTotals();
-        persistMeal();
-        showToast('Meal cleared', 'success');
+    clearMeal() {
+        if (globalState.mealList.length === 0) {
+            showToast('Meal is already empty', 'warning');
+            return;
+        }
+        
+        if (confirm('Are you sure you want to clear all foods from your meal?')) {
+            globalState.mealList = [];
+            this.updateMealTable();
+            this.updateNutritionTotals();
+            this.updateAllProgress();
+            showToast('Meal cleared successfully', 'success');
+        }
     }
-}
-
-function openCustomFoodModal() {
-    // Reset form
-    const form = document.getElementById('customFoodForm');
-    if (form) form.reset();
-    showModal(elements.customFoodModal);
-}
-
-function addCustomFood() {
-    const name = document.getElementById('customName').value.trim();
-    const calories = parseFloat(document.getElementById('customCalories').value);
-    const protein = parseFloat(document.getElementById('customProtein').value);
-    const carbs = parseFloat(document.getElementById('customCarbs').value);
-    const fat = parseFloat(document.getElementById('customFat').value);
-    const servingGrams = parseFloat(document.getElementById('customServingGrams').value) || null;
-
-    if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fat)) {
-        showToast('Please fill all required fields with valid numbers', 'error');
-        return;
-    }
-
-    const customFood = {
-        id: `custom-${Date.now()}`,
-        name: name,
-        calories: calories,
-        protein: protein,
-        carbs: carbs,
-        fat: fat,
-        serving_size: servingGrams ? `${servingGrams} g` : '100 g',
-        serving_grams: servingGrams || 100,
-        source: 'Custom',
-        origin: 'User',
-        last_updated: new Date().toISOString().split('T')[0],
-        label_url: '',
-        source_type: 'custom'
-    };
-
-    // Add to search index
-    searchIndex.push({
-        ...customFood,
-        searchName: customFood.name.toLowerCase()
-    });
-
-    closeModal(elements.customFoodModal);
-
-    // Immediately open quantity modal for this custom food
-    currentFoodForModal = customFood;
-    currentEditIndex = -1;
-    openQuantityModal();
-    showToast('Custom food added', 'success');
-}
-
-function openImportModal() {
-    const textarea = document.getElementById('importTextarea');
-    if (textarea) textarea.value = '';
-    showModal(elements.importModal);
-}
-
-function importMealData() {
-    const jsonText = document.getElementById('importTextarea').value.trim();
     
-    if (!jsonText) {
-        showToast('Please paste JSON data', 'warning');
-        return;
-    }
-
-    try {
-        const importedData = JSON.parse(jsonText);
-        
-        // Handle both old and new format
-        const meals = importedData.meals || (Array.isArray(importedData) ? importedData : []);
-        
-        if (!Array.isArray(meals)) {
-            throw new Error('Invalid meal data format');
+    handleSearch(query) {
+        if (!query.trim()) {
+            this.hideSearchResults();
+            return;
         }
-
-        // Validate structure
-        const validItems = meals.filter(item => 
-            item.name && 
-            typeof item.calories === 'number' && 
-            typeof item.protein === 'number' && 
-            typeof item.carbs === 'number' && 
-            typeof item.fat === 'number'
-        );
-
-        if (validItems.length === 0) {
-            throw new Error('No valid meal items found');
-        }
-
-        // Replace current meal
-        mealList = validItems;
-        updateMealDisplay();
-        updateTotals();
-        persistMeal();
-        closeModal(elements.importModal);
         
-        showToast(`Imported ${validItems.length} meal items successfully`, 'success');
-    } catch (error) {
-        console.error('Import error:', error);
-        showToast(`Import failed: ${error.message}`, 'error');
-    }
-}
-
-function showModal(modal) {
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.focus();
-    }
-}
-
-function closeModal(modal) {
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    currentFoodForModal = null;
-    currentEditIndex = -1;
-}
-
-function persistMeal() {
-    try {
-        const stateData = {
-            meals: mealList,
-            timestamp: new Date().toISOString()
-        };
+        // Search in category foods
+        const results = [];
+        Object.entries(CATEGORY_FOODS).forEach(([category, foods]) => {
+            foods.forEach(food => {
+                if (food.name.toLowerCase().includes(query.toLowerCase())) {
+                    results.push({ ...food, category });
+                }
+            });
+        });
         
-        localStorage.setItem('food-calc-meal', JSON.stringify(stateData.meals));
-        localStorage.setItem('food-calc-tdee', elements.tdeeInput.value);
-        
-        // Enhanced storage
-        localStorage.setItem('enhanced-calc-state', JSON.stringify(stateData));
-        
-    } catch (error) {
-        console.error('Error saving meal:', error);
+        this.showSearchResults(results);
     }
-}
-
-function loadPersistedMeal() {
-    try {
-        // Try enhanced storage first
-        const enhancedState = localStorage.getItem('enhanced-calc-state');
-        if (enhancedState) {
-            const state = JSON.parse(enhancedState);
-            mealList = state.meals || [];
+    
+    showSearchResults(results) {
+        const container = $('#search-suggestions');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (results.length === 0) {
+            container.innerHTML = '<div class="food-item">No foods found. Try a different search term.</div>';
         } else {
-            // Fallback to original storage
-            const savedMeal = localStorage.getItem('food-calc-meal');
-            if (savedMeal) {
-                mealList = JSON.parse(savedMeal);
+            results.forEach(food => {
+                const item = this.createSearchResultItem(food);
+                container.appendChild(item);
+            });
+        }
+        
+        container.classList.add('show');
+    }
+    
+    createSearchResultItem(food) {
+        const foodItem = createElement('div', { className: 'food-item' });
+        
+        const foodInfo = createElement('div', { className: 'food-info' });
+        const foodName = createElement('div', { className: 'food-name' }, [
+            `${food.name} (${food.category})`
+        ]);
+        const foodNutrition = createElement('div', { 
+            className: 'food-nutrition' 
+        }, [`${food.calories} cal, ${food.protein}g protein, ${food.carbs}g carbs, ${food.fat}g fat`]);
+        
+        foodInfo.appendChild(foodName);
+        foodInfo.appendChild(foodNutrition);
+        
+        const addBtn = createElement('button', {
+            className: 'food-add-btn',
+            innerHTML: '+ Add'
+        });
+        
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            globalState.currentFoodForModal = food;
+            this.showQuantityModal();
+        });
+        
+        foodItem.appendChild(foodInfo);
+        foodItem.appendChild(addBtn);
+        
+        return foodItem;
+    }
+    
+    hideSearchResults() {
+        const container = $('#search-suggestions');
+        if (container) {
+            container.classList.remove('show');
+        }
+    }
+    
+    setSearchFilter(filter) {
+        globalState.currentSearchFilter = filter;
+        
+        // Update button states
+        $$('[data-filter]').forEach(btn => {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-secondary');
+        });
+        
+        $(`[data-filter="${filter}"]`)?.classList.add('btn-success');
+        $(`[data-filter="${filter}"]`)?.classList.remove('btn-secondary');
+        
+        showToast(`Search filter set to: ${filter}`, 'success');
+    }
+}
+
+// ====================================
+// INITIALIZATION & EVENT LISTENERS
+// ====================================
+
+let userProfile;
+let barcodeScanner;
+let categoryManager;
+let nutritionTracker;
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Food Calculator - Mobile Optimized Version 3.0 Loading...');
+    
+    // Initialize managers
+    userProfile = new UserProfileManager();
+    barcodeScanner = new BarcodeScanner();
+    categoryManager = new CategoryManager();
+    nutritionTracker = new NutritionTracker();
+    
+    // Setup barcode scanner events
+    $('#barcode-btn')?.addEventListener('click', () => {
+        barcodeScanner.openModal();
+    });
+    
+    $('#close-barcode')?.addEventListener('click', () => {
+        barcodeScanner.closeModal();
+    });
+    
+    $('#switch-camera-btn')?.addEventListener('click', () => {
+        barcodeScanner.switchCamera();
+    });
+    
+    $('#manual-entry-btn')?.addEventListener('click', () => {
+        const barcode = prompt('Enter barcode manually:');
+        if (barcode) {
+            barcodeScanner.searchBarcode(barcode);
+        }
+    });
+    
+    // Voice search placeholder
+    $('#voice-search-btn')?.addEventListener('click', () => {
+        showToast('Voice search feature coming soon!', 'warning');
+    });
+    
+    // Close modals when clicking outside
+    $$('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('show');
+                if (modal.id === 'barcode-modal') {
+                    barcodeScanner.closeModal();
+                }
+            }
+        });
+    });
+    
+    // Hide category foods when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.category-grid') && !e.target.closest('#category-foods')) {
+            categoryManager.hideCategoryFoods();
+        }
+    });
+    
+    // Hide search suggestions when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#food-search') && !e.target.closest('#search-suggestions')) {
+            nutritionTracker.hideSearchResults();
+        }
+    });
+    
+    // Add CSS animations
+    const style = createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .food-list {
+            transition: all 0.3s ease;
+        }
+        
+        .category-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .category-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Mobile-specific improvements */
+        @media (max-width: 767px) {
+            .modal-content {
+                margin: 0.5rem;
+                max-height: calc(100vh - 1rem);
+                overflow-y: auto;
+            }
+            
+            .table {
+                font-size: 0.8rem;
+            }
+            
+            .btn-sm {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.75rem;
             }
         }
         
-        const savedTdee = localStorage.getItem('food-calc-tdee');
-        if (savedTdee && elements.tdeeInput) {
-            elements.tdeeInput.value = savedTdee;
+        /* Improved touch targets */
+        @media (hover: none) and (pointer: coarse) {
+            .food-item {
+                min-height: 60px;
+            }
+            
+            .food-add-btn {
+                min-height: 40px;
+                min-width: 60px;
+            }
         }
         
-        updateMealDisplay();
-    } catch (error) {
-        console.error('Error loading persisted meal:', error);
-    }
-}
-
-function getCachedData(key) {
-    try {
-        const cached = localStorage.getItem(key);
-        if (!cached) return null;
-        
-        const data = JSON.parse(cached);
-        if (Date.now() - data.timestamp > USDA_CACHE_TTL_MS) {
-            localStorage.removeItem(key);
-            return null;
+        /* Better dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .progress-circle .circle-fill {
+                filter: brightness(1.2);
+            }
+            
+            .btn {
+                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            }
         }
-        
-        return data.value;
-    } catch (error) {
-        localStorage.removeItem(key);
-        return null;
-    }
-}
-
-function setCachedData(key, value) {
-    try {
-        const data = {
-            value: value,
-            timestamp: Date.now()
-        };
-        localStorage.setItem(key, JSON.stringify(data));
-        if (isDebugMode) console.log('Cached:', key);
-    } catch (error) {
-        console.error('Cache error:', error);
-    }
-}
-
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    const colors = {
-        success: 'bg-green-500 text-white',
-        error: 'bg-red-500 text-white',
-        warning: 'bg-yellow-500 text-black',
-        info: 'bg-blue-500 text-white'
-    };
+    `;
     
-    toast.className = `${colors[type]} px-4 py-3 rounded-lg shadow-lg mb-2 transform transition-all duration-300 translate-x-full`;
-    toast.textContent = message;
+    document.head.appendChild(style);
     
-    const container = document.getElementById('toastContainer');
-    if (container) {
-        container.appendChild(toast);
-        
-        // Animate in
-        setTimeout(() => {
-            toast.classList.remove('translate-x-full');
-        }, 10);
-        
-        // Remove after 4 seconds
-        setTimeout(() => {
-            toast.classList.add('translate-x-full');
-            setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 300);
-        }, 4000);
+    console.log('Food Calculator initialized successfully!');
+    
+    // Show welcome message
+    setTimeout(() => {
+        showToast('Welcome to your enhanced food calculator! 🍽️', 'success', 4000);
+    }, 1000);
+});
+
+// ====================================
+// GLOBAL ERROR HANDLING
+// ====================================
+
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+    if (globalState.isDebugMode) {
+        showToast('An error occurred. Check console for details.', 'danger');
     }
-}
+});
 
-// Make functions globally available for onclick handlers
-window.editMealItem = editMealItem;
-window.removeMealItem = removeMealItem;
-window.openCustomFoodModal = openCustomFoodModal;
+// ====================================
+// PERFORMANCE MONITORING
+// ====================================
 
-// Debug function for development
-if (isDebugMode) {
-    window.debugApp = () => ({
-        mealList,
-        searchIndex: searchIndex.length,
-        databases: {
-            foods: foodDatabase.length,
-            fssai: fssaiDatabase.length, 
-            meals: mealDatabase.length
-        },
-        cache: Object.keys(localStorage).filter(k => k.includes('usda')),
-        profile: enhancedUserProfile ? enhancedUserProfile.getDailyTargets() : null,
-        progressTracker: advancedProgressTracker ? 'initialized' : 'not initialized',
-        currentFilter: currentSearchFilter
+if ('performance' in window) {
+    window.addEventListener('load', () => {
+        const timing = performance.timing;
+        const loadTime = timing.loadEventEnd - timing.navigationStart;
+        console.log(`Page loaded in ${loadTime}ms`);
+        
+        if (loadTime > 3000) {
+            console.warn('Page load time is over 3 seconds. Consider optimizing.');
+        }
     });
 }
+
+// ====================================
+// EXPORT GLOBAL REFERENCES
+// ====================================
+
+// Make nutritionTracker globally available for onclick handlers
+window.nutritionTracker = nutritionTracker;
