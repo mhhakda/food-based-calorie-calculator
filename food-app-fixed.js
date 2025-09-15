@@ -937,53 +937,72 @@ function buildSearchIndex() {
         });
     });
 
-    if (isDebugMode) console.log('Built search index with', searchIndex.length, 'items');
-}
+  // Fixed setupEventListeners function - lines 940-986
+if (isDebugMode) console.log('Built search index with', searchIndex.length, 'items');
 
 function setupEventListeners() {
+    // Cache DOM elements first with null checks
+    const searchInput = document.getElementById('food-search');
+    const tdeeInput = document.getElementById('tdee-input'); 
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    
     // Search input with debouncing
-    elements.searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        const query = e.target.value.trim();
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => performSearch(query), 300);
+        });
         
-        if (query.length < 2) {
-            hideSuggestions();
-            return;
-        }
-        
-        searchTimeout = setTimeout(() => performSearch(query), 300);
-    });
-
-    // Search input keyboard navigation
-    elements.searchInput.addEventListener('keydown', handleSearchKeydown);
-
+        // Search input keyboard navigation
+        searchInput.addEventListener('keydown', handleSearchKeydown);
+    }
+    
     // Click outside to hide suggestions
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('#foodSearch') && !e.target.closest('#suggestions')) {
+        if (!e.target.closest('#food-search') && !e.target.closest('#search-suggestions')) {
             hideSuggestions();
         }
     });
-
+    
     // TDEE input
-    elements.tdeeInput.addEventListener('input', updateTDEEComparison);
-
-    // Button event listeners
-    document.getElementById('btnAddCustom').addEventListener('click', openCustomFoodModal);
-    document.getElementById('btnImportMeal').addEventListener('click', openImportModal);
-    document.getElementById('btnDownloadMeal').addEventListener('click', downloadMealPDF);
-    document.getElementById('btnCopyMeal').addEventListener('click', copyMealJSON);
-    document.getElementById('btnExportMeal').addEventListener('click', exportMealJSON);
-    document.getElementById('btnClearMeal').addEventListener('click', clearMeal);
-
+    if (tdeeInput) {
+        tdeeInput.addEventListener('input', updateTDEEComparison);
+    }
+    
+    // Button event listeners with null checks
+    const btnAddCustom = document.getElementById('add-custom-food-btn');
+    if (btnAddCustom) btnAddCustom.addEventListener('click', openCustomFoodModal);
+    
+    const btnImportMeal = document.getElementById('import-meal-btn');
+    if (btnImportMeal) btnImportMeal.addEventListener('click', openImportModal);
+    
+    const btnDownloadMeal = document.getElementById('export-pdf-btn');
+    if (btnDownloadMeal) btnDownloadMeal.addEventListener('click', downloadMealPDF);
+    
+    const btnCopyMeal = document.getElementById('copy-meal-btn');
+    if (btnCopyMeal) btnCopyMeal.addEventListener('click', copyMealJSON);
+    
+    const btnExportMeal = document.getElementById('export-json-btn');
+    if (btnExportMeal) btnExportMeal.addEventListener('click', exportMealJSON);
+    
+    const btnClearMeal = document.getElementById('clear-meal-btn');
+    if (btnClearMeal) btnClearMeal.addEventListener('click', clearMeal);
+    
     // Setup filter buttons
     setupFilterButtons();
     
     // Setup category buttons
     setupCategoryButtons();
-
+    
     // Modal event listeners
     setupModalEventListeners();
-}
 
 // =========================
 // Filter Buttons Functionality
