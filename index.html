@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1a1a1a">
-    <title>Food-Based Calorie Calculator - Mobile Optimized</title>
+    <title>Food Calculator - Voice & Scanner Fixed</title>
     
-    <!-- External Libraries -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- External Libraries - Using specific version to fix scanner issues -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
     
     <style>
         /* CSS Custom Properties for Light/Dark Mode */
@@ -525,12 +525,31 @@
             border-radius: 8px;
             overflow: hidden;
             background: #000;
+            min-height: 300px;
         }
 
         #barcode-scanner video {
             width: 100%;
             height: auto;
             display: block;
+        }
+
+        /* Voice Search Button States */
+        .btn-listening {
+            background: var(--danger-color);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
 
         /* Utility Classes */
@@ -643,6 +662,40 @@
                 min-height: 44px;
             }
         }
+
+        /* Additional animations */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .food-list {
+            transition: all 0.3s ease;
+        }
+        
+        .category-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .category-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Better dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .progress-circle .circle-fill {
+                filter: brightness(1.2);
+            }
+            
+            .btn {
+                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            }
+        }
     </style>
 </head>
 <body>
@@ -650,9 +703,9 @@
         <!-- Header -->
         <div class="text-center mb-4">
             <h1 style="color: var(--text-primary); font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">
-                🍽️ Food-Based Calorie Calculator
+                🍽️ Food Calculator - Voice & Scanner Fixed
             </h1>
-            <p style="color: var(--text-secondary);">Track your nutrition with personalized targets and comprehensive food database</p>
+            <p style="color: var(--text-secondary);">Track nutrition with working voice search and barcode scanner</p>
         </div>
 
         <!-- Profile Setup Card -->
@@ -839,7 +892,7 @@
                 
                 <div class="form-group">
                     <input type="text" id="food-search" class="form-control" 
-                           placeholder="Search foods, brands, or scan barcode...">
+                           placeholder="Search foods, use voice, or scan barcode...">
                     <div id="search-suggestions" class="food-list"></div>
                 </div>
 
@@ -853,7 +906,7 @@
                     </div>
                 </div>
 
-                <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Quick Add Categories</h4>
+                <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Quick Add Categories (20 items each)</h4>
                 <div class="category-grid">
                     <div class="category-btn" data-category="fruits">
                         <span class="emoji">🍎</span>
@@ -916,7 +969,7 @@
                         <tbody id="meal-table">
                             <tr>
                                 <td colspan="7" class="text-center text-muted">
-                                    No items added yet. Search and add foods to get started.
+                                    No items added yet. Search, use voice, or scan to add foods.
                                 </td>
                             </tr>
                         </tbody>
@@ -1002,7 +1055,7 @@
     <div id="barcode-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">📱 Barcode Scanner</h3>
+                <h3 class="modal-title">📱 Barcode Scanner - Fixed</h3>
                 <button class="modal-close" id="close-barcode">&times;</button>
             </div>
             <div id="barcode-scanner"></div>
@@ -1121,6 +1174,6 @@
     <!-- Toast Notifications -->
     <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 2000;"></div>
 
-    <script src="improved-food-app.js"></script>
+    <script src="food-app-fixed.js"></script>
 </body>
 </html>
