@@ -1060,16 +1060,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (isDebugMode) console.log('🐛 Debug mode enabled');
 });
-
+// ---- REPLACE initializeElements() with this robust version ----
 function initializeElements() {
     elements.searchInput = document.getElementById('foodSearch');
-    elements.suggestions = document.getElementById('suggestions');
+
+    // Try multiple possible IDs / selectors for suggestions to be tolerant to markup differences
+    elements.suggestions =
+        document.getElementById('suggestions') ||
+        document.getElementById('search-suggestions') ||
+        document.querySelector('.search-suggestions') ||
+        document.querySelector('#searchSuggestions');
+
+    // If no suggestions container exists, create a simple fallback right after the search input
+    if (!elements.suggestions) {
+        if (elements.searchInput && elements.searchInput.parentNode) {
+            const fallback = document.createElement('div');
+            fallback.id = 'suggestions';
+            fallback.className = 'suggestions hidden';
+            // insert after the search input
+            elements.searchInput.parentNode.insertBefore(fallback, elements.searchInput.nextSibling);
+            elements.suggestions = fallback;
+            if (isDebugMode) console.log('Created fallback suggestions container');
+        } else {
+            // final fallback to document.body (safe but ugly)
+            const fallback = document.createElement('div');
+            fallback.id = 'suggestions';
+            fallback.className = 'suggestions hidden';
+            document.body.appendChild(fallback);
+            elements.suggestions = fallback;
+            if (isDebugMode) console.log('Created body suggestions container fallback');
+        }
+    }
+
     elements.mealTbody = document.getElementById('mealTbody');
     elements.totalCals = document.getElementById('totalCals');
     elements.totalProtein = document.getElementById('totalProtein');
     elements.totalCarbs = document.getElementById('totalCarbs');
     elements.totalFat = document.getElementById('totalFat');
-    elements.tdeeInput = document.getElementById('tdeeInput');
+    elements.tdeeInput = document.getElementById('tdeeInput') || document.querySelector('input[name="tdee"]');
     elements.tdeeBar = document.getElementById('tdeeBar');
     elements.tdeePercent = document.getElementById('tdeePercent');
     elements.quantityModal = document.getElementById('quantityModal');
@@ -1209,16 +1237,37 @@ function setupFilterButtons() {
     });
 }
 
-// =========================
-// Category Buttons Functionality  
-// =========================
+// ---- REPLACE setupCategoryButtons() with this tolerant version ----
 function setupCategoryButtons() {
     const categoryButtons = document.querySelectorAll('.category-btn');
     categoryButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const category = e.target.dataset.category;
-            if (category && CATEGORY_FOODS[category]) {
-                showCategoryFoods(category, CATEGORY_FOODS[category]);
+            e.preventDefault();
+
+            // Prefer data-category, but fall back to button text
+            const raw = (e.currentTarget.dataset.category || e.currentTarget.getAttribute('data-category') || e.currentTarget.textContent || '').toString().trim();
+
+            if (!raw) {
+                showToast('Category not recognized', 'error');
+                return;
+            }
+
+            // Normalize to lowercase and remove extra spaces
+            const normalized = raw.toLowerCase().replace(/\s+/g, '');
+
+            // Try to find matching key in CATEGORY_FOODS (be flexible)
+            let foundKey = Object.keys(CATEGORY_FOODS).find(k => k.toLowerCase() === normalized);
+
+            if (!foundKey) {
+                // try looser matches (e.g. 'fruits' vs 'fruit' vs 'fruits ')
+                foundKey = Object.keys(CATEGORY_FOODS).find(k => normalized.includes(k.toLowerCase()) || k.toLowerCase().includes(normalized));
+            }
+
+            if (foundKey) {
+                showCategoryFoods(foundKey, CATEGORY_FOODS[foundKey]);
+            } else {
+                showToast(`Category "${raw}" not found`, 'error');
+                if (isDebugMode) console.log('Available categories:', Object.keys(CATEGORY_FOODS));
             }
         });
     });
@@ -1409,6 +1458,16 @@ function mapUSDAFoodToLocal(usdaFood) {
 }
 
 function displaySuggestions(results, query) {
+    // Ensure suggestions container exists (defensive)
+    if (!elements.suggestions) {
+        initializeElements(); // attempt to recover
+        if (!elements.suggestions) {
+            // can't display suggestions, log and bail
+            console.error('No suggestions container available to render results');
+            return;
+        }
+    }
+
     if (results.length === 0) {
         elements.suggestions.innerHTML = `
             <div class="no-results">
@@ -1420,7 +1479,6 @@ function displaySuggestions(results, query) {
         elements.suggestions.classList.remove('hidden');
         return;
     }
-
     const html = results.map((item, index) => {
         const icon = getSourceIcon(item);
         const badge = getSourceBadge(item);
