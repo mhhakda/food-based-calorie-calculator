@@ -226,6 +226,90 @@ const CATEGORY_FOODS = {
         {name: 'Lassi', calories: 89, protein: 3, carbs: 13, fat: 3}
     ]
 };
+// ====================================
+// UTILITY FUNCTIONS
+// ====================================
+
+function $(selector) {
+    return document.querySelector(selector);
+}
+
+function $$(selector) {
+    return document.querySelectorAll(selector);
+}
+
+function createElement(tag, attributes = {}, children = []) {
+    const element = document.createElement(tag);
+    
+    Object.entries(attributes).forEach(([key, value]) => {
+        if (key === 'className') {
+            element.className = value;
+        } else if (key === 'innerHTML') {
+            element.innerHTML = value;
+        } else {
+            element.setAttribute(key, value);
+        }
+    });
+    
+    children.forEach(child => {
+        if (typeof child === 'string') {
+            element.appendChild(document.createTextNode(child));
+        } else {
+            element.appendChild(child);
+        }
+    });
+    
+    return element;
+}
+
+function showToast(message, type = 'success', duration = 3000) {
+    const container = $('#toast-container');
+    if (!container) {
+        // Create toast container if it doesn't exist
+        const toastContainer = createElement('div', {
+            id: 'toast-container',
+            style: 'position: fixed; top: 20px; right: 20px; z-index: 2000;'
+        });
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toast = createElement('div', {
+        className: `alert alert-${type}`,
+        style: 'margin-bottom: 10px; animation: slideIn 0.3s ease-out;'
+    }, [message]);
+    
+    const finalContainer = $('#toast-container');
+    finalContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in forwards';
+        setTimeout(() => {
+            if (finalContainer.contains(toast)) {
+                finalContainer.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function hideSuggestions() {
+    const container = $('#search-suggestions');
+    if (container) {
+        container.classList.remove('show');
+    }
+}
+
 // =========================
 // Profiles & TDEE (Enhanced)
 // =========================
