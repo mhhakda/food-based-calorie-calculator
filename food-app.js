@@ -471,285 +471,349 @@ class VoiceSearchManager {
     }
 }
 
-// ====================================
-// BARCODE SCANNER
-// ====================================
+// ImprovedBarcodeScanner (replacement)
+// - Uses Html5Qrcode when available; falls back to native BarcodeDetector + video capture
+// - Simpler, safer getUserMedia constraints to avoid OverconstrainedError / black preview
+// - Robust logging + visible debug output for decoded text
+// - Graceful camera switching and torch toggle attempts
 
 class ImprovedBarcodeScanner {
-    constructor() {
+  constructor(options = {}) {
+    this.scanner = null;                 // Html5Qrcode instance
+    this.cameras = [];                   // camera device list
+    this.currentCameraIndex = 0;
+    this.isScanning = false;
+    this.deviceStream = null;            // MediaStream when using BarcodeDetector fallback
+    this.detectorInterval = null;        // loop interval id for BarcodeDetector
+    this.options = options || {};
+    this.maxInitAttempts = 3;
+    this.initAttempts = 0;
+    // safer default config (avoid hard width/height constraints)
+    this.config = {
+      fps: 8,
+      qrbox: { width: 280, height: 280 },
+      // Keep videoConstraints minimal: only facingMode — width/height constraints cause errors on some devices
+      videoConstraints: { facingMode: { ideal: "environment" } }
+    };
+  }
+
+  // ----------------- Public API -----------------
+  async openModalAndStart() {
+    const modal = document.getElementById('barcode-modal') || document.getElementById('barcode-scanner-modal');
+    if (modal) modal.classList.add('show');
+    // small delay so modal lays out and camera can be attached cleanly
+    await new Promise(r => setTimeout(r, 250));
+    await this.startScanning();
+  }
+
+  async closeModalAndStop() {
+    const modal = document.getElementById('barcode-modal') || document.getElementById('barcode-scanner-modal');
+    if (modal) modal.classList.remove('show');
+    await this.stopScanning();
+  }
+
+  // ----------------- Initialization -----------------
+  async initHtml5QrcodeSafe() {
+    if (typeof Html5Qrcode === 'undefined') {
+      console.warn('Html5Qrcode not present - skipping Html5Qrcode init');
+      return false;
+    }
+
+    try {
+      this.initAttempts++;
+      // attempt to get cameras via Html5Qrcode.getCameras (lib handles browser quirks)
+      const cams = await Html5Qrcode.getCameras().catch(() => []);
+      this.cameras = (cams || []).slice();
+
+      // make sure scanner element exists
+      let container = document.getElementById('barcode-scanner');
+      if (!container) {
+        // Create container fallback
+        container = document.createElement('div');
+        container.id = 'barcode-scanner';
+        const holder = document.getElementById('barcode-scanner-body') || document.body;
+        holder.appendChild(container);
+        console.log('Created fallback #barcode-scanner container');
+      }
+
+      // create/cleanup existing instance
+      if (this.scanner) {
+        try { await this.scanner.stop(); } catch(e) {}
+        try { this.scanner.clear(); } catch(e) {}
         this.scanner = null;
-        this.cameras = [];
-        this.currentCameraIndex = 0;
-        this.isScanning = false;
-        this.config = {
-            fps: 10,
-            qrbox: { width: 280, height: 150 },
-            aspectRatio: 1.77,
-            disableFlip: false,
-            videoConstraints: {
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 },
-                facingMode: "environment"
-            }
-        };
-        this.initializationAttempts = 0;
-        this.maxInitializationAttempts = 3;
+      }
+
+      // instantiate
+      this.scanner = new Html5Qrcode("barcode-scanner", { verbose: false });
+      return true;
+    } catch (err) {
+      console.error('initHtml5QrcodeSafe error:', err);
+      if (this.initAttempts < this.maxInitAttempts) {
+        await new Promise(r => setTimeout(r, 500));
+        return this.initHtml5QrcodeSafe();
+      }
+      return false;
     }
-    
-    async initialize() {
-        if (typeof Html5Qrcode === 'undefined') {
-            console.error('html5-qrcode library not loaded');
-            showToast('Barcode scanner library not loaded. Please refresh the page.', 'danger');
-            return false;
-        }
-        
-        this.initializationAttempts++;
-        
-        try {
-            this.cameras = await this.getCamerasWithRetry();
-            
-            if (this.cameras.length === 0) {
-                throw new Error('No cameras found on device');
-            }
-            
-            const scannerElement = document.getElementById("barcode-scanner");
-            if (!scannerElement) {
-                throw new Error('Scanner container element not found');
-            }
-            
-            if (this.scanner) {
-                try {
-                    await this.scanner.stop();
-                    await this.scanner.clear();
-                } catch (e) {
-                    console.log('Previous scanner cleanup:', e);
-                }
-            }
-            
-            this.scanner = new Html5Qrcode("barcode-scanner", {
-                verbose: false,
-                useBarCodeDetectorIfSupported: true
-            });
-            
-            console.log('Barcode scanner initialized successfully');
-            showToast('📱 Scanner initialized successfully', 'success');
-            return true;
-            
-        } catch (error) {
-            console.error('Error initializing barcode scanner:', error);
-            
-            if (this.initializationAttempts < this.maxInitializationAttempts) {
-                console.log(`Retrying initialization (attempt ${this.initializationAttempts}/${this.maxInitializationAttempts})`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return this.initialize();
-            }
-            
-            this.handleInitializationError(error);
-            return false;
-        }
+  }
+
+  // ----------------- Start / Stop -----------------
+  async startScanning() {
+    if (this.isScanning) {
+      console.log('Already scanning');
+      return;
     }
-    
-    async getCamerasWithRetry(maxRetries = 3) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                const cameras = await Html5Qrcode.getCameras();
-                if (cameras && cameras.length > 0) {
-                    return cameras;
-                }
-                
-                if (attempt < maxRetries) {
-                    console.log(`No cameras found, retrying... (${attempt}/${maxRetries})`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-            } catch (error) {
-                console.error(`Camera detection attempt ${attempt} failed:`, error);
-                if (attempt < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-            }
+
+    // Try Html5Qrcode route first
+    const html5Ready = await this.initHtml5QrcodeSafe();
+    if (html5Ready && this.scanner) {
+      try {
+        // pick camera id if available (prefer back/rear)
+        let cameraIdOrFacing = { facingMode: "environment" };
+        if (this.cameras && this.cameras.length) {
+          const back = this.cameras.find(c => /back|rear|environment/i.test(c.label || ""));
+          if (back) cameraIdOrFacing = back.id;
+          else cameraIdOrFacing = this.cameras[this.currentCameraIndex].id;
         }
-        
-        return [];
+
+        await this.scanner.start(
+          cameraIdOrFacing,
+          this.config,
+          decodedText => this._onDecoded(decodedText, 'html5'),
+          errorMsg => this._onScanAttemptError(errorMsg)
+        );
+
+        this.isScanning = true;
+        console.log('Html5Qrcode scanning started');
+        this._debugShow('Scanner ready (Html5Qrcode).');
+        return;
+      } catch (startErr) {
+        console.warn('Html5Qrcode.start failed, falling back:', startErr);
+        // attempt to gracefully stop & clear
+        try { await this.scanner.stop(); } catch(e) {}
+        try { this.scanner.clear(); } catch(e) {}
+        this.scanner = null;
+        // continue to fallback
+      }
     }
-    
-    async startScanning() {
-        if (this.isScanning) {
-            console.log('Scanner already running');
-            return;
-        }
-        
-        if (!this.scanner) {
-            const initialized = await this.initialize();
-            if (!initialized) {
-                return;
-            }
-        }
-        
-        try {
-            let cameraId = null;
-            
-            const backCamera = this.cameras.find(camera => 
-                camera.label && (
-                    camera.label.toLowerCase().includes('back') || 
-                    camera.label.toLowerCase().includes('rear') ||
-                    camera.label.toLowerCase().includes('environment')
-                )
-            );
-            
-            if (backCamera) {
-                cameraId = backCamera.id;
-                console.log('Using back camera:', backCamera.label);
-            } else if (this.cameras.length > 0) {
-                cameraId = this.cameras[this.currentCameraIndex].id;
-                console.log('Using camera:', this.cameras[this.currentCameraIndex].label);
-            } else {
-                cameraId = { facingMode: "environment" };
-                console.log('Using environment facing mode');
-            }
-            
-            await this.scanner.start(
-                cameraId,
-                this.config,
-                this.onScanSuccess.bind(this),
-                this.onScanFailure.bind(this)
-            );
-            
-            this.isScanning = true;
-            console.log('Barcode scanning started successfully');
-            showToast('📱 Scanner ready! Point at barcode', 'success');
-            
-        } catch (error) {
-            console.error('Error starting scanner:', error);
-            this.handleScanError(error);
-        }
+
+    // Fallback: native BarcodeDetector + video
+    if ('BarcodeDetector' in window) {
+      try {
+        await this._startBarcodeDetectorFallback();
+        this.isScanning = true;
+        console.log('BarcodeDetector fallback started');
+        this._debugShow('Scanner ready (BarcodeDetector).');
+        return;
+      } catch (detErr) {
+        console.error('BarcodeDetector fallback failed:', detErr);
+      }
     }
-    
-    async stopScanning() {
-        if (!this.isScanning || !this.scanner) {
-            return;
-        }
-        
-        try {
-            await this.scanner.stop();
-            this.isScanning = false;
-            console.log('Barcode scanning stopped');
-        } catch (error) {
-            console.error('Error stopping scanner:', error);
-            this.isScanning = false;
-        }
+
+    // If we reach here, scanning not available
+    this._notify('Camera scanning not available on this device/browser. Use manual entry.', 'danger');
+  }
+
+  async stopScanning() {
+    // stop html5 scanner if running
+    try {
+      if (this.scanner) {
+        await this.scanner.stop().catch(()=>{});
+        try { this.scanner.clear(); } catch(e) {}
+        this.scanner = null;
+      }
+    } catch(e) { console.warn('Error stopping html5 scanner', e); }
+
+    // stop fallback stream + interval
+    if (this.detectorInterval) {
+      clearInterval(this.detectorInterval);
+      this.detectorInterval = null;
     }
-    
-    async switchCamera() {
-        if (this.cameras.length <= 1) {
-            showToast('No additional cameras available', 'warning');
-            return;
+    if (this.deviceStream) {
+      this.deviceStream.getTracks().forEach(t => {
+        try { t.stop(); } catch(e) {}
+      });
+      this.deviceStream = null;
+    }
+
+    this.isScanning = false;
+    this._debugShow('Scanner stopped.');
+    console.log('Scanner stopped and cleaned up');
+  }
+
+  // ----------------- Camera switch & torch -----------------
+  async switchCamera() {
+    // if using list of cameras, cycle index and restart
+    if (this.cameras && this.cameras.length > 1) {
+      this.currentCameraIndex = (this.currentCameraIndex + 1) % this.cameras.length;
+      await this.stopScanning();
+      await this.startScanning();
+      const cam = this.cameras[this.currentCameraIndex];
+      this._notify(`Switched to: ${cam.label || 'camera'}`, 'success');
+      return;
+    }
+    this._notify('No additional cameras available', 'info');
+  }
+
+  async toggleTorch() {
+    // toggling torch requires access to active track and the capability
+    try {
+      // If we have a deviceStream, use that
+      let stream = this.deviceStream;
+      if (!stream && this.scanner && Html5Qrcode) {
+        // Html5Qrcode doesn't expose the track directly; attempt to get track from created video element
+        const vid = document.querySelector('#barcode-scanner video, #barcode-video, #html5-qrcode-region video');
+        stream = vid && vid.srcObject;
+      }
+      if (!stream) {
+        this._notify('No active camera stream to toggle torch', 'info');
+        return;
+      }
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        this._notify('No camera track found', 'info');
+        return;
+      }
+      const caps = track.getCapabilities && track.getCapabilities();
+      if (!caps || !caps.torch) {
+        this._notify('Torch not supported on this device', 'info');
+        return;
+      }
+      // toggle current value
+      const current = track.getSettings && track.getSettings().torch;
+      await track.applyConstraints({ advanced: [{ torch: !current }] });
+      this._notify(!current ? 'Flashlight ON' : 'Flashlight OFF', 'success');
+    } catch (err) {
+      console.error('toggleTorch failed:', err);
+      this._notify('Could not toggle flashlight', 'danger');
+    }
+  }
+
+  // ----------------- BarcodeDetector fallback pipeline -----------------
+  async _startBarcodeDetectorFallback() {
+    // create or reuse video element
+    let video = document.getElementById('barcode-video');
+    if (!video) {
+      video = document.createElement('video');
+      video.id = 'barcode-video';
+      video.setAttribute('playsinline', 'true');
+      video.style.width = '100%';
+      const holder = document.getElementById('barcode-scanner-body') || document.body;
+      holder.appendChild(video);
+    }
+
+    // ask for a simple stream (only facingMode)
+    const stream = await navigator.mediaDevices.getUserMedia({ video: this.config.videoConstraints });
+    this.deviceStream = stream;
+    video.srcObject = stream;
+    await video.play();
+
+    const formats = ['qr_code', 'ean_13', 'code_128', 'upc_a', 'upc_e'];
+    const detector = new BarcodeDetector({ formats });
+
+    // Detection loop - runs every 300-500ms
+    this.detectorInterval = setInterval(async () => {
+      try {
+        const results = await detector.detect(video);
+        if (results && results.length) {
+          const r = results[0];
+          const code = r.rawValue || r.rawData || r.rawText || (r.value && r.value.raw) || null;
+          if (code) {
+            this._onDecoded(code, 'detector');
+          } else {
+            console.log('BarcodeDetector result with no rawValue', r);
+          }
         }
-        
-        await this.stopScanning();
-        this.currentCameraIndex = (this.currentCameraIndex + 1) % this.cameras.length;
-        await this.startScanning();
-        
-        const currentCamera = this.cameras[this.currentCameraIndex];
-        showToast(`📷 Switched to: ${currentCamera.label || 'Camera ' + (this.currentCameraIndex + 1)}`, 'success');
+      } catch (err) {
+        // occasional detect() errors are expected; log in debug mode
+        if (this.options.debug) console.debug('detector detect error:', err);
+      }
+    }, 400);
+  }
+
+  // ----------------- Scan result handling -----------------
+  async _onDecoded(decodedText, source = 'unknown') {
+    console.log(`[scan:${source}] decoded ->`, decodedText);
+    // show in debug UI
+    this._debugShow(`Decoded (${source}): ${decodedText}`);
+
+    // stop scanning to avoid duplicates
+    try { await this.stopScanning(); } catch(e){}
+
+    // close modal (if present)
+    const modal = document.getElementById('barcode-modal') || document.getElementById('barcode-scanner-modal');
+    if (modal) modal.classList.remove('show');
+
+    // Normalize and deliver to app integration points in prioritized order
+    const code = (decodedText || '').toString().trim();
+    if (!code) {
+      this._notify('Scanned code is empty', 'warning');
+      return;
     }
-    
-    onScanSuccess(decodedText, decodedResult) {
-        console.log('Barcode scanned successfully:', decodedText);
-        
-        this.stopScanning();
-        this.closeModal();
-        this.processBarcode(decodedText, decodedResult);
-        
-        showToast(`✅ Barcode scanned: ${decodedText}`, 'success', 5000);
+
+    // 1) if nutritionTracker.handleSearch exists, call it (your code used it previously)
+    if (window.nutritionTracker && typeof window.nutritionTracker.handleSearch === 'function') {
+      try {
+        const inputEl = document.getElementById('food-search') || document.getElementById('foodSearch') || document.querySelector('[name="food-search"]');
+        if (inputEl) inputEl.value = code;
+        window.nutritionTracker.handleSearch(code);
+        return;
+      } catch (err) {
+        console.warn('nutritionTracker.handleSearch failed:', err);
+      }
     }
-    
-    onScanFailure(error) {
-        // Silent failure - scanning is continuous
-        if (!error.includes('NotFoundException') && !error.includes('not found')) {
-            console.log('Scan attempt:', error);
-        }
+
+    // 2) fallback: call performSearch if available
+    if (typeof performSearch === 'function') {
+      try {
+        performSearch(code);
+        return;
+      } catch (err) {
+        console.warn('performSearch failed:', err);
+      }
     }
-    
-    async processBarcode(barcode, scanResult) {
-        const searchInput = $('#food-search');
-        if (searchInput) {
-            searchInput.value = barcode;
-            nutritionTracker.handleSearch(barcode);
-        }
-        
-        showToast(`🔍 Looking up barcode: ${barcode}`, 'warning');
-        
-        setTimeout(() => {
-            if (barcode.length >= 8) {
-                const sampleProducts = {
-                    '123456789': { name: 'Sample Granola Bar', calories: 150, protein: 3, carbs: 25, fat: 6 },
-                    '987654321': { name: 'Sample Energy Drink', calories: 110, protein: 0, carbs: 28, fat: 0 }
-                };
-                
-                if (sampleProducts[barcode]) {
-                    const product = sampleProducts[barcode];
-                    globalState.currentFoodForModal = product;
-                    nutritionTracker.showQuantityModal();
-                    showToast(`Found: ${product.name}`, 'success');
-                } else {
-                    showToast('Product not found in database. Try manual search.', 'warning', 4000);
-                }
-            } else {
-                showToast('Invalid barcode format. Try scanning again.', 'warning');
-            }
-        }, 1500);
+
+    // 3) fallback: populate search input and show quantity modal if available
+    const fallbackInput = document.getElementById('food-search') || document.getElementById('foodSearch');
+    if (fallbackInput) fallbackInput.value = code;
+    // if you have a modal function like showQuantityModal or openCustomFoodModal, try them
+    if (window.nutritionTracker && typeof window.nutritionTracker.showQuantityModal === 'function') {
+      try { window.nutritionTracker.showQuantityModal(); return; } catch(e){}
     }
-    
-    openModal() {
-        const modal = $('#barcode-modal');
-        if (modal) {
-            modal.classList.add('show');
-            setTimeout(() => {
-                this.initialize().then(success => {
-                    if (success) {
-                        this.startScanning();
-                    }
-                });
-            }, 300);
-        }
+    if (typeof openCustomFoodModal === 'function') { openCustomFoodModal(); return; }
+
+    // final fallback: show a toast with raw code so dev/testers can use it
+    this._notify(`Scanned: ${code}`, 'success');
+  }
+
+  _onScanAttemptError(msg) {
+    // html5-qrcode errors come here frequently (not found in frame) — only log non-expected errors
+    if (!msg || /not found|No QR code detected|No barcode detected/i.test(msg)) {
+      if (this.options.debug) console.debug('scan attempt:', msg);
+      return;
     }
-    
-    closeModal() {
-        const modal = $('#barcode-modal');
-        if (modal) {
-            modal.classList.remove('show');
-            this.stopScanning();
-        }
+    console.warn('scan attempt error:', msg);
+  }
+
+  // ----------------- Helpers / UI utilities -----------------
+  _notify(text, type = 'info') {
+    // try calling your existing showToast wrapper, otherwise console
+    if (typeof showToast === 'function') {
+      showToast(text, type);
+    } else {
+      console.log(`[toast:${type}] ${text}`);
     }
-    
-    handleInitializationError(error) {
-        let errorMessage = 'Failed to initialize barcode scanner';
-        
-        if (error.message.includes('camera') || error.message.includes('Camera')) {
-            errorMessage = 'Camera not available or permission denied';
-        } else if (error.message.includes('not found')) {
-            errorMessage = 'No cameras found on this device';
-        }
-        
-        showToast(errorMessage, 'danger');
+  }
+
+  _debugShow(text) {
+    // write debug text into a visible dom element if present
+    const debugEl = document.getElementById('barcode-decoded-text') || document.getElementById('barcode-debug');
+    if (debugEl) {
+      debugEl.textContent = text;
+      debugEl.style.display = 'block';
+    } else if (this.options.debug) {
+      console.debug('debug:', text);
     }
-    
-    handleScanError(error) {
-        let errorMessage = 'Scanner failed to start';
-        
-        if (error.name === 'NotAllowedError') {
-            errorMessage = 'Camera permission denied. Please allow camera access.';
-        } else if (error.name === 'NotFoundError') {
-            errorMessage = 'No camera found on this device.';
-        } else if (error.name === 'NotReadableError') {
-            errorMessage = 'Camera is being used by another application.';
-        } else if (error.name === 'OverconstrainedError') {
-            errorMessage = 'Camera constraints not supported.';
-        }
-        
-        showToast(errorMessage, 'danger');
-        console.error('Scanner error details:', error);
-    }
+  }
 }
 
 // ====================================
