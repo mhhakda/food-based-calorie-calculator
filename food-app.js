@@ -1419,12 +1419,13 @@ function updateProgressCircle(nutrient, current, target) {
         remainingEl.textContent = `${Math.round(remaining * 10) / 10}g remaining`;
     }
     
-    // Update progress circle  
-const circumference = 377; // 2 * π * 60 (circumference)
-const offset = circumference - (percentage / 100) * circumference;
-progressEl.style.strokeDashoffset = offset;
-progressEl.style.strokeDasharray = circumference;
-
+    // Update progress circle - FIXED to start from top
+    const circumference = 377; // 2 * Math.PI * 60
+    const offset = circumference - (percentage / 100) * circumference;
+    
+    progressEl.style.strokeDasharray = `${circumference} ${circumference}`;
+    progressEl.style.strokeDashoffset = offset;
+    
     // Color coding
     if (percentage >= 100) {
         progressEl.style.stroke = '#28a745'; // green when complete
@@ -1434,6 +1435,7 @@ progressEl.style.strokeDasharray = circumference;
         progressEl.style.stroke = 'var(--color-primary)'; // teal default
     }
 }
+
 
 // =============================================
 // EXPORT AND UTILITY FUNCTIONS
@@ -1741,5 +1743,19 @@ if (globalState.isDebugMode) {
     };
     console.log('Debug mode enabled. Access via window.debugFunctions');
 }
+// Initialize progress circles to start from top
+function initializeProgressCircles() {
+    const circles = document.querySelectorAll('.circle-fill');
+    circles.forEach(circle => {
+        circle.style.strokeDasharray = '377 377';
+        circle.style.strokeDashoffset = '377';
+    });
+}
+
+// Call initialization when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    initializeProgressCircles();
+    initializeApp(); // Your existing initialization
+});
 
 console.log('Food Calculator v3.2 - Diet Tracker Design System Integration - Loaded Successfully! 🎉');
