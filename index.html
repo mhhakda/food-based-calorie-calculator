@@ -3,240 +3,644 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1a1a1a">
-    <title>Food Calculator - Voice & Scanner Fixed</title>
+    <meta name="theme-color" content="#1FB8CD">
+    <title>Food Calculator - Calorie & Nutrition Tracker</title>
     
-    <!-- External Libraries - Using specific version to fix scanner issues -->
+    <!-- External Libraries -->
     <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
     
     <style>
-        /* CSS Custom Properties for Light/Dark Mode */
+        /* Diet Tracker Design System - Complete CSS Applied to Food Calculator */
         :root {
-            color-scheme: light dark;
-            
-            /* Light mode colors */
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8f9fa;
-            --bg-card: #ffffff;
-            --text-primary: #212529;
-            --text-secondary: #6c757d;
-            --text-muted: #495057;
-            --border-color: #dee2e6;
-            --accent-color: #007bff;
-            --accent-hover: #0056b3;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
-            --shadow: 0 2px 4px rgba(0,0,0,0.1);
+            /* Color System from Diet Tracker */
+            --color-white: rgba(255, 255, 255, 1);
+            --color-black: rgba(0, 0, 0, 1);
+            --color-cream-50: rgba(252, 252, 249, 1);
+            --color-cream-100: rgba(255, 255, 253, 1);
+            --color-gray-200: rgba(245, 245, 245, 1);
+            --color-gray-300: rgba(167, 169, 169, 1);
+            --color-gray-400: rgba(119, 124, 124, 1);
+            --color-slate-500: rgba(98, 108, 113, 1);
+            --color-brown-600: rgba(94, 82, 64, 1);
+            --color-charcoal-700: rgba(31, 33, 33, 1);
+            --color-charcoal-800: rgba(38, 40, 40, 1);
+            --color-slate-900: rgba(19, 52, 59, 1);
+            --color-teal-300: rgba(50, 184, 198, 1);
+            --color-teal-400: rgba(45, 166, 178, 1);
+            --color-teal-500: rgba(33, 128, 141, 1);
+            --color-teal-600: rgba(29, 116, 128, 1);
+            --color-teal-700: rgba(26, 104, 115, 1);
+            --color-teal-800: rgba(41, 150, 161, 1);
+            --color-red-400: rgba(255, 84, 89, 1);
+            --color-red-500: rgba(192, 21, 47, 1);
+            --color-orange-400: rgba(230, 129, 97, 1);
+            --color-orange-500: rgba(168, 75, 47, 1);
+
+            /* RGB versions for opacity control */
+            --color-brown-600-rgb: 94, 82, 64;
+            --color-teal-500-rgb: 33, 128, 141;
+            --color-slate-900-rgb: 19, 52, 59;
+            --color-slate-500-rgb: 98, 108, 113;
+            --color-red-500-rgb: 192, 21, 47;
+            --color-red-400-rgb: 255, 84, 89;
+            --color-orange-500-rgb: 168, 75, 47;
+            --color-orange-400-rgb: 230, 129, 97;
+
+            /* Semantic Colors */
+            --color-background: var(--color-cream-50);
+            --color-surface: var(--color-cream-100);
+            --color-text: var(--color-slate-900);
+            --color-text-secondary: var(--color-slate-500);
+            --color-primary: var(--color-teal-500);
+            --color-primary-hover: var(--color-teal-600);
+            --color-primary-active: var(--color-teal-700);
+            --color-secondary: rgba(var(--color-brown-600-rgb), 0.12);
+            --color-secondary-hover: rgba(var(--color-brown-600-rgb), 0.2);
+            --color-secondary-active: rgba(var(--color-brown-600-rgb), 0.25);
+            --color-border: rgba(var(--color-brown-600-rgb), 0.2);
+            --color-btn-primary-text: var(--color-cream-50);
+            --color-card-border: rgba(var(--color-brown-600-rgb), 0.12);
+            --color-card-border-inner: rgba(var(--color-brown-600-rgb), 0.12);
+            --color-error: var(--color-red-500);
+            --color-success: var(--color-teal-500);
+            --color-warning: var(--color-orange-500);
+            --color-info: var(--color-slate-500);
+            --color-focus-ring: rgba(var(--color-teal-500-rgb), 0.4);
+
+            /* Typography - Diet Tracker Font System */
+            --font-family-base: 'FKGroteskNeue', 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-family-mono: 'Berkeley Mono', ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+            --font-size-xs: 11px;
+            --font-size-sm: 12px;
+            --font-size-base: 14px;
+            --font-size-md: 14px;
+            --font-size-lg: 16px;
+            --font-size-xl: 18px;
+            --font-size-2xl: 20px;
+            --font-size-3xl: 24px;
+            --font-size-4xl: 30px;
+            --font-weight-normal: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 550;
+            --font-weight-bold: 600;
+            --line-height-tight: 1.2;
+            --line-height-normal: 1.5;
+            --letter-spacing-tight: -0.01em;
+
+            /* Spacing */
+            --space-0: 0;
+            --space-1: 1px;
+            --space-2: 2px;
+            --space-4: 4px;
+            --space-6: 6px;
+            --space-8: 8px;
+            --space-10: 10px;
+            --space-12: 12px;
+            --space-16: 16px;
+            --space-20: 20px;
+            --space-24: 24px;
+            --space-32: 32px;
+
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-base: 8px;
+            --radius-md: 10px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+
+            /* Shadows */
+            --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+
+            /* Animation */
+            --duration-fast: 150ms;
+            --duration-normal: 250ms;
+            --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+
+            /* Layout */
+            --container-sm: 640px;
+            --container-md: 768px;
+            --container-lg: 1024px;
+            --container-xl: 1280px;
+
+            /* App-specific */
+            --app-max-width: var(--container-xl);
         }
 
-        /* Dark mode colors */
+        /* Dark mode */
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-primary: #1a1a1a;
-                --bg-secondary: #2d3748;
-                --bg-card: #2d3748;
-                --text-primary: #f7fafc;
-                --text-secondary: #e2e8f0;
-                --text-muted: #cbd5e0;
-                --border-color: #4a5568;
-                --accent-color: #4299e1;
-                --accent-hover: #3182ce;
-                --success-color: #48bb78;
-                --warning-color: #ed8936;
-                --danger-color: #f56565;
-                --shadow: 0 2px 4px rgba(0,0,0,0.3);
+                --color-background: var(--color-charcoal-700);
+                --color-surface: var(--color-charcoal-800);
+                --color-text: var(--color-gray-200);
+                --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+                --color-primary: var(--color-teal-300);
+                --color-primary-hover: var(--color-teal-400);
+                --color-primary-active: var(--color-teal-800);
+                --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+                --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+                --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+                --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+                --color-error: var(--color-red-400);
+                --color-success: var(--color-teal-300);
+                --color-warning: var(--color-orange-400);
+                --color-info: var(--color-gray-300);
+                --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+                --color-btn-primary-text: var(--color-slate-900);
+                --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+                --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
             }
         }
 
-        /* Manual dark mode override */
         [data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d3748;
-            --bg-card: #2d3748;
-            --text-primary: #f7fafc;
-            --text-secondary: #e2e8f0;
-            --text-muted: #cbd5e0;
-            --border-color: #4a5568;
-            --accent-color: #4299e1;
-            --accent-hover: #3182ce;
-            --success-color: #48bb78;
-            --warning-color: #ed8936;
-            --danger-color: #f56565;
-            --shadow: 0 2px 4px rgba(0,0,0,0.3);
+            --color-background: var(--color-charcoal-700);
+            --color-surface: var(--color-charcoal-800);
+            --color-text: var(--color-gray-200);
+            --color-text-secondary: rgba(var(--color-gray-300-rgb), 0.7);
+            --color-primary: var(--color-teal-300);
+            --color-primary-hover: var(--color-teal-400);
+            --color-primary-active: var(--color-teal-800);
+            --color-secondary: rgba(var(--color-gray-400-rgb), 0.15);
+            --color-secondary-hover: rgba(var(--color-gray-400-rgb), 0.25);
+            --color-secondary-active: rgba(var(--color-gray-400-rgb), 0.3);
+            --color-border: rgba(var(--color-gray-400-rgb), 0.3);
+            --color-error: var(--color-red-400);
+            --color-success: var(--color-teal-300);
+            --color-warning: var(--color-orange-400);
+            --color-info: var(--color-gray-300);
+            --color-focus-ring: rgba(var(--color-teal-300-rgb), 0.4);
+            --color-btn-primary-text: var(--color-slate-900);
+            --color-card-border: rgba(var(--color-gray-400-rgb), 0.2);
+            --color-card-border-inner: rgba(var(--color-gray-400-rgb), 0.15);
         }
 
-        /* Base Styles */
+        /* Base styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.5;
+        html {
+            font-size: var(--font-size-base);
+            font-family: var(--font-family-base);
+            line-height: var(--line-height-normal);
+            color: var(--color-text);
+            background-color: var(--color-background);
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            scroll-behavior: smooth;
         }
 
-        /* Dark mode font weight adjustment for better readability */
-        @media (prefers-color-scheme: dark) {
-            body {
-                font-weight: 350; /* Lighter weight for dark mode */
-            }
+        body {
+            font-family: var(--font-family-base);
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: var(--line-height-normal);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-weight: 350;
         }
 
         .container {
-            max-width: 100%;
+            max-width: var(--app-max-width);
             margin: 0 auto;
-            padding: 1rem;
+            padding: var(--space-32);
         }
 
-        /* Mobile-first responsive design */
-        @media (min-width: 768px) {
-            .container {
-                max-width: 800px;
-                padding: 1.5rem;
-            }
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            margin: 0;
+            font-weight: var(--font-weight-semibold);
+            line-height: var(--line-height-tight);
+            color: var(--color-text);
+            letter-spacing: var(--letter-spacing-tight);
         }
 
-        @media (min-width: 1024px) {
-            .container {
-                max-width: 1000px;
-                padding: 2rem;
-            }
+        h1 { 
+            font-size: var(--font-size-4xl);
+            font-weight: var(--font-weight-bold);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-teal-400));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-bottom: var(--space-8);
         }
 
-        /* Card Component */
+        h2 { font-size: var(--font-size-2xl); }
+        h3 { font-size: var(--font-size-xl); }
+        h4 { font-size: var(--font-size-lg); }
+
+        p {
+            margin: 0 0 var(--space-16) 0;
+            color: var(--color-text-secondary);
+            text-align: center;
+        }
+
+        /* Cards */
         .card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            margin-bottom: 1.5rem;
+            background-color: var(--color-surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-card-border);
+            box-shadow: var(--shadow-md);
             overflow: hidden;
+            margin-bottom: var(--space-24);
+            transition: all var(--duration-normal) var(--ease-standard);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
         }
 
         .card-header {
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            font-size: 1.125rem;
+            background: linear-gradient(135deg, var(--color-secondary), rgba(var(--color-brown-600-rgb), 0.08));
+            padding: var(--space-20) var(--space-24);
+            border-bottom: 1px solid var(--color-card-border-inner);
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .card-body {
-            padding: 1.5rem;
+            padding: var(--space-24);
         }
 
-        /* Button Styles */
+        /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 500;
-            text-decoration: none;
+            padding: var(--space-10) var(--space-20);
+            border-radius: var(--radius-base);
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-medium);
+            line-height: var(--line-height-normal);
             cursor: pointer;
-            transition: all 0.2s ease;
-            gap: 0.5rem;
-            min-height: 44px; /* Touch-friendly minimum height */
-            background: var(--accent-color);
-            color: white;
+            transition: all var(--duration-normal) var(--ease-standard);
+            border: none;
+            text-decoration: none;
+            position: relative;
+            font-family: inherit;
+            min-height: 44px;
+            gap: var(--space-8);
         }
 
-        .btn:hover, .btn:focus {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
+        .btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
 
         .btn:active {
             transform: translateY(0);
         }
 
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
+        .btn.btn-primary, .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-teal-400));
+            color: var(--color-btn-primary-text);
+            box-shadow: var(--shadow-sm);
         }
 
-        .btn-secondary:hover, .btn-secondary:focus {
-            background: var(--border-color);
+        .btn.btn-primary:hover, .btn-primary:hover {
+            background: linear-gradient(135deg, var(--color-primary-hover), var(--color-teal-600));
+            box-shadow: var(--shadow-md);
         }
 
-        .btn-success {
-            background: var(--success-color);
+        .btn.btn-secondary, .btn-secondary {
+            background: var(--color-secondary);
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
         }
 
-        .btn-warning {
-            background: var(--warning-color);
+        .btn.btn-secondary:hover, .btn-secondary:hover {
+            background: var(--color-secondary-hover);
         }
 
-        .btn-danger {
-            background: var(--danger-color);
+        .btn.btn-success, .btn-success {
+            background: linear-gradient(135deg, var(--color-success), var(--color-teal-400));
+            color: var(--color-btn-primary-text);
+        }
+
+        .btn.btn-success:hover, .btn-success:hover {
+            background: linear-gradient(135deg, var(--color-primary-hover), var(--color-teal-600));
+        }
+
+        .btn.btn-warning, .btn-warning {
+            background: var(--color-warning);
+            color: var(--color-btn-primary-text);
+        }
+
+        .btn.btn-danger, .btn-danger {
+            background: var(--color-error);
+            color: var(--color-btn-primary-text);
         }
 
         .btn-sm {
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
+            padding: var(--space-6) var(--space-12);
+            font-size: var(--font-size-sm);
             min-height: 36px;
         }
 
-        /* Form Controls */
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Form controls */
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: var(--space-20);
         }
 
         .form-label {
             display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-primary);
+            margin-bottom: var(--space-8);
+            font-weight: var(--font-weight-medium);
+            font-size: var(--font-size-sm);
+            color: var(--color-text);
         }
 
         .form-control {
+            display: block;
             width: 100%;
-            padding: 0.75rem 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-size: 1rem;
-            transition: border-color 0.2s ease;
-            min-height: 44px; /* Touch-friendly */
+            padding: var(--space-10) var(--space-12);
+            font-size: var(--font-size-base);
+            line-height: var(--line-height-normal);
+            color: var(--color-text);
+            background-color: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-base);
+            transition: all var(--duration-fast) var(--ease-standard);
+            font-family: var(--font-family-base);
+            min-height: 44px;
         }
 
         .form-control:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+            border-color: var(--color-primary);
+            outline: 2px solid var(--color-primary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(var(--color-teal-500-rgb), 0.15);
         }
 
         select.form-control {
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
             background-repeat: no-repeat;
-            background-position: right 0.75rem center;
+            background-position: right 12px center;
             background-size: 16px 12px;
-            padding-right: 2.5rem;
+            padding-right: var(--space-32);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
 
-        /* Grid System */
+        /* Progress circles */
+        .progress-circle {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 0 auto var(--space-16);
+        }
+
+        .progress-circle svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: var(--color-border);
+            stroke-width: 8;
+        }
+
+        .circle-fill {
+            fill: none;
+            stroke: var(--color-primary);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 440;
+            stroke-dashoffset: 440;
+            transition: stroke-dashoffset 0.8s var(--ease-standard);
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .progress-value {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-primary);
+            display: block;
+            margin-bottom: var(--space-4);
+        }
+
+        .progress-label {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-tight);
+            font-weight: var(--font-weight-medium);
+        }
+
+        /* Category grid */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: var(--space-16);
+            margin-top: var(--space-16);
+        }
+
+        .category-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: var(--space-20);
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            text-decoration: none;
+            color: var(--color-text);
+            transition: all var(--duration-normal) var(--ease-standard);
+            cursor: pointer;
+            min-height: 100px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-teal-400));
+            transform: scaleX(0);
+            transition: transform var(--duration-normal) var(--ease-standard);
+            transform-origin: left;
+        }
+
+        .category-btn:hover {
+            border-color: var(--color-primary);
+            background: var(--color-secondary);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .category-btn:hover:before {
+            transform: scaleX(1);
+        }
+
+        .category-btn.active, .category-btn.btn-success {
+            border-color: var(--color-primary);
+            background: var(--color-secondary);
+            color: var(--color-primary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .category-btn .emoji {
+            font-size: var(--font-size-3xl);
+            margin-bottom: var(--space-8);
+        }
+
+        .category-btn .label {
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-medium);
+            text-align: center;
+        }
+
+        /* Food lists */
+        .food-list {
+            display: none;
+            margin-top: var(--space-16);
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            max-height: 400px;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+        }
+
+        .food-list.show {
+            display: block;
+        }
+
+        .food-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-16) var(--space-20);
+            border-bottom: 1px solid var(--color-border);
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-standard);
+        }
+
+        .food-item:last-child {
+            border-bottom: none;
+        }
+
+        .food-item:hover {
+            background: var(--color-secondary);
+            transform: translateX(4px);
+        }
+
+        .food-info {
+            flex: 1;
+        }
+
+        .food-name {
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text);
+            margin-bottom: var(--space-4);
+            font-size: var(--font-size-base);
+        }
+
+        .food-nutrition {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+        }
+
+        .food-add-btn {
+            background: var(--color-primary);
+            color: var(--color-btn-primary-text);
+            border: none;
+            border-radius: var(--radius-base);
+            padding: var(--space-8) var(--space-16);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all var(--duration-fast) var(--ease-standard);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .food-add-btn:hover {
+            background: var(--color-primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-top: var(--space-16);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--color-surface);
+            margin: 0;
+            font-size: var(--font-size-sm);
+        }
+
+        .table th {
+            background: linear-gradient(135deg, var(--color-secondary), rgba(var(--color-brown-600-rgb), 0.08));
+            padding: var(--space-16) var(--space-12);
+            text-align: left;
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
+            border-bottom: 2px solid var(--color-border);
+            font-size: var(--font-size-sm);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .table td {
+            padding: var(--space-16) var(--space-12);
+            border-bottom: 1px solid var(--color-border);
+            color: var(--color-text);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background: var(--color-secondary);
+        }
+
+        /* Grid system */
         .row {
             display: flex;
             flex-wrap: wrap;
-            margin: -0.5rem;
+            margin: calc(-1 * var(--space-8));
         }
 
         .col {
             flex: 1;
-            padding: 0.5rem;
+            padding: var(--space-8);
             min-width: 0;
         }
 
@@ -255,210 +659,7 @@
             max-width: 25%;
         }
 
-        /* Mobile adjustments */
-        @media (max-width: 767px) {
-            .col-2, .col-3, .col-4 {
-                flex: 0 0 100%;
-                max-width: 100%;
-            }
-            
-            .row {
-                margin: -0.25rem;
-            }
-            
-            .col {
-                padding: 0.25rem;
-            }
-        }
-
-        /* Progress Circles */
-        .progress-circle {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 1rem;
-        }
-
-        .progress-circle svg {
-            transform: rotate(-90deg);
-        }
-
-        .progress-circle .circle-bg {
-            fill: none;
-            stroke: var(--border-color);
-            stroke-width: 8;
-        }
-
-        .progress-circle .circle-fill {
-            fill: none;
-            stroke: var(--accent-color);
-            stroke-width: 8;
-            stroke-linecap: round;
-            stroke-dasharray: 314;
-            stroke-dashoffset: 314;
-            transition: stroke-dashoffset 0.5s ease;
-        }
-
-        .progress-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-
-        .progress-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            display: block;
-        }
-
-        .progress-label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Category Buttons Grid */
-        .category-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .category-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 1rem;
-            background: var(--bg-card);
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            text-decoration: none;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-            min-height: 80px;
-            cursor: pointer;
-        }
-
-        .category-btn:hover, .category-btn:focus {
-            border-color: var(--accent-color);
-            background: var(--accent-color);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .category-btn .emoji {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .category-btn .label {
-            font-size: 0.875rem;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        /* Food List */
-        .food-list {
-            display: none;
-            margin-top: 1rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .food-list.show {
-            display: block;
-        }
-
-        .food-item {
-            display: flex;
-            justify-content: between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .food-item:last-child {
-            border-bottom: none;
-        }
-
-        .food-item:hover {
-            background: var(--bg-secondary);
-        }
-
-        .food-info {
-            flex: 1;
-        }
-
-        .food-name {
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: 0.25rem;
-        }
-
-        .food-nutrition {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
-
-        .food-add-btn {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .food-add-btn:hover {
-            background: var(--accent-hover);
-        }
-
-        /* Table Styles */
-        .table-responsive {
-            overflow-x: auto;
-            margin-top: 1rem;
-        }
-
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--bg-card);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .table th,
-        .table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .table th {
-            background: var(--bg-secondary);
-            font-weight: 600;
-            font-size: 0.875rem;
-            color: var(--text-primary);
-        }
-
-        .table td {
-            font-size: 0.875rem;
-        }
-
-        /* Modal Styles */
+        /* Modals */
         .modal {
             display: none;
             position: fixed;
@@ -466,9 +667,9 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 1000;
-            padding: 1rem;
+            padding: var(--space-16);
             overflow-y: auto;
         }
 
@@ -479,13 +680,12 @@
         }
 
         .modal-content {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 2rem;
+            background: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-32);
             width: 100%;
             max-width: 500px;
-            margin: auto;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-lg);
             position: relative;
         }
 
@@ -493,36 +693,37 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: var(--space-24);
         }
 
         .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text);
         }
 
         .modal-close {
             background: none;
             border: none;
-            font-size: 1.5rem;
+            font-size: var(--font-size-2xl);
             cursor: pointer;
-            color: var(--text-secondary);
-            padding: 0.25rem;
-            border-radius: 4px;
+            color: var(--color-text-secondary);
+            padding: var(--space-4);
+            border-radius: var(--radius-base);
+            transition: all var(--duration-fast) var(--ease-standard);
         }
 
         .modal-close:hover {
-            color: var(--text-primary);
-            background: var(--bg-secondary);
+            color: var(--color-error);
+            background: var(--color-secondary);
         }
 
-        /* Scanner Styles */
+        /* Scanner styles */
         #barcode-scanner {
             width: 100%;
             max-width: 400px;
             margin: 0 auto;
-            border-radius: 8px;
+            border-radius: var(--radius-base);
             overflow: hidden;
             background: #000;
             min-height: 300px;
@@ -534,95 +735,142 @@
             display: block;
         }
 
-        /* Voice Search Button States */
+        /* Toast notifications */
+        #toast-container {
+            position: fixed;
+            top: var(--space-20);
+            right: var(--space-20);
+            z-index: 2000;
+        }
+
+        .alert {
+            padding: var(--space-16) var(--space-20);
+            border-radius: var(--radius-base);
+            margin-bottom: var(--space-10);
+            font-weight: var(--font-weight-medium);
+            border: 1px solid transparent;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            background: rgba(var(--color-teal-500-rgb), 0.1);
+            border-color: var(--color-success);
+            color: var(--color-success);
+        }
+
+        .alert-danger {
+            background: rgba(var(--color-red-500-rgb), 0.1);
+            border-color: var(--color-error);
+            color: var(--color-error);
+        }
+
+        .alert-warning {
+            background: rgba(var(--color-orange-500-rgb), 0.1);
+            border-color: var(--color-warning);
+            color: var(--color-warning);
+        }
+
+        /* Voice search states */
         .btn-listening {
-            background: var(--danger-color);
+            background: var(--color-error) !important;
             animation: pulse 1.5s ease-in-out infinite;
         }
 
         @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+            0% { box-shadow: 0 0 0 0 rgba(192, 21, 47, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(192, 21, 47, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(192, 21, 47, 0); }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
             }
-            70% {
-                box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            to {
+                transform: translateX(0);
+                opacity: 1;
             }
         }
 
-        /* Utility Classes */
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* Utility classes */
         .text-center { text-align: center; }
         .text-right { text-align: right; }
-        .text-muted { color: var(--text-muted); }
-        .text-success { color: var(--success-color); }
-        .text-warning { color: var(--warning-color); }
-        .text-danger { color: var(--danger-color); }
+        .text-muted { color: var(--color-text-secondary); }
+        .text-success { color: var(--color-success); }
+        .text-danger { color: var(--color-error); }
+        .text-warning { color: var(--color-warning); }
+        .text-primary { color: var(--color-primary); }
 
-        .mb-1 { margin-bottom: 0.5rem; }
-        .mb-2 { margin-bottom: 1rem; }
-        .mb-3 { margin-bottom: 1.5rem; }
-        .mb-4 { margin-bottom: 2rem; }
+        .mb-1 { margin-bottom: var(--space-4); }
+        .mb-2 { margin-bottom: var(--space-8); }
+        .mb-3 { margin-bottom: var(--space-16); }
+        .mb-4 { margin-bottom: var(--space-24); }
+        .mt-1 { margin-top: var(--space-4); }
+        .mt-2 { margin-top: var(--space-8); }
+        .mt-3 { margin-top: var(--space-16); }
+        .mt-4 { margin-top: var(--space-24); }
 
-        .mt-1 { margin-top: 0.5rem; }
-        .mt-2 { margin-top: 1rem; }
-        .mt-3 { margin-top: 1.5rem; }
-        .mt-4 { margin-top: 2rem; }
+        .hidden { display: none !important; }
 
-        .hidden { display: none; }
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: var(--space-16);
+            }
 
-        /* Responsive Typography */
-        @media (max-width: 767px) {
-            .card-header {
-                font-size: 1rem;
-                padding: 0.75rem 1rem;
+            .col-2, .col-3, .col-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
             }
-            
-            .card-body {
-                padding: 1rem;
-            }
-            
-            .progress-circle {
-                width: 100px;
-                height: 100px;
-            }
-            
-            .progress-value {
-                font-size: 1.25rem;
-            }
-            
+
             .category-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
+                gap: var(--space-12);
             }
-            
-            .category-btn {
-                min-height: 70px;
-                padding: 0.75rem;
+
+            .progress-circle {
+                width: 120px;
+                height: 120px;
             }
-            
+
             .modal-content {
-                padding: 1.5rem;
-                margin: 1rem;
+                padding: var(--space-24);
+                margin: var(--space-16);
+            }
+
+            .card-body {
+                padding: var(--space-16);
             }
         }
 
-        /* Loading States */
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
+        @media (max-width: 480px) {
+            .category-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
+        /* Loading spinner */
         .spinner {
-            border: 2px solid var(--border-color);
-            border-top: 2px solid var(--accent-color);
+            border: 2px solid var(--color-border);
+            border-top: 2px solid var(--color-primary);
             border-radius: 50%;
             width: 20px;
             height: 20px;
             animation: spin 1s linear infinite;
             display: inline-block;
-            margin-right: 0.5rem;
+            margin-right: var(--space-8);
         }
 
         @keyframes spin {
@@ -630,89 +878,27 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Success/Error Messages */
-        .alert {
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            border: 1px solid transparent;
-        }
-
-        .alert-success {
-            background: rgba(72, 187, 120, 0.1);
-            border-color: var(--success-color);
-            color: var(--success-color);
-        }
-
-        .alert-warning {
-            background: rgba(237, 137, 54, 0.1);
-            border-color: var(--warning-color);
-            color: var(--warning-color);
-        }
-
-        .alert-danger {
-            background: rgba(245, 101, 101, 0.1);
-            border-color: var(--danger-color);
-            color: var(--danger-color);
-        }
-
-        /* Improved touch targets for mobile */
-        @media (hover: none) and (pointer: coarse) {
-            .btn, .form-control, .category-btn, .food-item {
-                min-height: 44px;
-            }
-        }
-
-        /* Additional animations */
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        
-        .food-list {
-            transition: all 0.3s ease;
-        }
-        
-        .category-btn {
-            transition: all 0.2s ease;
-        }
-        
-        .category-btn:active {
-            transform: scale(0.95);
-        }
-        
-        /* Better dark mode support */
-        @media (prefers-color-scheme: dark) {
-            .progress-circle .circle-fill {
-                filter: brightness(1.2);
-            }
-            
-            .btn {
-                box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            }
+        /* Font loading */
+        @font-face {
+            font-family: 'FKGroteskNeue';
+            src: url('https://r2cdn.perplexity.ai/fonts/FKGroteskNeue.woff2') format('woff2');
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
         <div class="text-center mb-4">
-            <h1 style="color: var(--text-primary); font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">
-                🍽️ Food Calculator - Voice & Scanner Fixed
-            </h1>
-            <p style="color: var(--text-secondary);">Track nutrition with working voice search and barcode scanner</p>
+            <h1>Food Calculator</h1>
+            <p>Track nutrition with voice search and barcode scanning</p>
         </div>
 
         <!-- Profile Setup Card -->
         <div class="card">
             <div class="card-header">
-                🎯 Set Your Daily Nutrition Goals
-                <button id="profile-toggle" class="btn btn-sm btn-secondary" style="float: right;">Show Profile Setup</button>
+                Set Your Daily Nutrition Goals
+                <button id="profile-toggle" class="btn btn-sm btn-secondary">Show Profile Setup</button>
             </div>
             <div id="profile-form-section" class="card-body hidden">
                 <form id="user-profile-form">
@@ -734,6 +920,7 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col col-2">
                             <div class="form-group">
@@ -748,50 +935,51 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="form-group">
                         <label for="activity-level" class="form-label">Activity Level</label>
                         <select id="activity-level" class="form-control" required>
                             <option value="">Select Activity Level</option>
-                            <option value="1.2">🪑 Sedentary - Office job, no exercise</option>
-                            <option value="1.375">🚶 Light - Light exercise 1-3 days/week</option>
-                            <option value="1.55">🏃 Moderate - Exercise 3-5 days/week</option>
-                            <option value="1.725">💪 Active - Hard exercise 6-7 days/week</option>
-                            <option value="1.9">🏋️ Very Active - Physical job + daily exercise</option>
+                            <option value="1.2">Sedentary - Office job, no exercise</option>
+                            <option value="1.375">Light - Light exercise 1-3 days/week</option>
+                            <option value="1.55">Moderate - Exercise 3-5 days/week</option>
+                            <option value="1.725">Active - Hard exercise 6-7 days/week</option>
+                            <option value="1.9">Very Active - Physical job + daily exercise</option>
                         </select>
                     </div>
+                    
                     <div class="form-group">
                         <label class="form-label">Primary Goal</label>
                         <div class="row">
                             <div class="col col-3">
                                 <label class="btn btn-secondary" style="width: 100%; text-align: center;">
                                     <input type="radio" name="goal" value="lose" style="display: none;">
-                                    📉 Lose Weight<br><small>20% calorie deficit</small>
+                                    Lose Weight<br><small>20% calorie deficit</small>
                                 </label>
                             </div>
                             <div class="col col-3">
                                 <label class="btn btn-secondary" style="width: 100%; text-align: center;">
                                     <input type="radio" name="goal" value="maintain" style="display: none;">
-                                    ⚖️ Maintain<br><small>Maintenance calories</small>
+                                    Maintain<br><small>Maintenance calories</small>
                                 </label>
                             </div>
                             <div class="col col-3">
                                 <label class="btn btn-secondary" style="width: 100%; text-align: center;">
                                     <input type="radio" name="goal" value="gain" style="display: none;">
-                                    📈 Gain Weight<br><small>20% calorie surplus</small>
+                                    Gain Weight<br><small>20% calorie surplus</small>
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success" style="width: 100%;">
-                        🔄 Calculate My Daily Goals
-                    </button>
+                    
+                    <button type="submit" class="btn btn-success" style="width: 100%;">Calculate My Daily Goals</button>
                 </form>
             </div>
         </div>
 
         <!-- Daily Targets -->
         <div id="calculated-goals" class="card hidden">
-            <div class="card-header">📊 Your Personalized Daily Targets</div>
+            <div class="card-header">Your Personalized Daily Targets</div>
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col">
@@ -816,14 +1004,14 @@
 
         <!-- Daily Progress -->
         <div class="card">
-            <div class="card-header">📈 Your Daily Progress</div>
+            <div class="card-header">Your Daily Progress</div>
             <div class="card-body">
                 <div class="row">
                     <div class="col col-2">
                         <div class="progress-circle">
-                            <svg width="120" height="120">
-                                <circle class="circle-bg" cx="60" cy="60" r="50"></circle>
-                                <circle class="circle-fill" cx="60" cy="60" r="50" id="calories-progress"></circle>
+                            <svg width="140" height="140">
+                                <circle class="circle-bg" cx="70" cy="70" r="60"></circle>
+                                <circle class="circle-fill" cx="70" cy="70" r="60" id="calories-progress"></circle>
                             </svg>
                             <div class="progress-text">
                                 <span class="progress-value" id="current-calories">0</span>
@@ -831,11 +1019,12 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="col col-2">
                         <div class="progress-circle">
-                            <svg width="120" height="120">
-                                <circle class="circle-bg" cx="60" cy="60" r="50"></circle>
-                                <circle class="circle-fill" cx="60" cy="60" r="50" id="protein-progress"></circle>
+                            <svg width="140" height="140">
+                                <circle class="circle-bg" cx="70" cy="70" r="60"></circle>
+                                <circle class="circle-fill" cx="70" cy="70" r="60" id="protein-progress"></circle>
                             </svg>
                             <div class="progress-text">
                                 <span class="progress-value" id="current-protein">0</span>
@@ -844,12 +1033,13 @@
                         </div>
                     </div>
                 </div>
+                
                 <div class="row">
                     <div class="col col-2">
                         <div class="progress-circle">
-                            <svg width="120" height="120">
-                                <circle class="circle-bg" cx="60" cy="60" r="50"></circle>
-                                <circle class="circle-fill" cx="60" cy="60" r="50" id="carbs-progress"></circle>
+                            <svg width="140" height="140">
+                                <circle class="circle-bg" cx="70" cy="70" r="60"></circle>
+                                <circle class="circle-fill" cx="70" cy="70" r="60" id="carbs-progress"></circle>
                             </svg>
                             <div class="progress-text">
                                 <span class="progress-value" id="current-carbs">0</span>
@@ -857,11 +1047,12 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="col col-2">
                         <div class="progress-circle">
-                            <svg width="120" height="120">
-                                <circle class="circle-bg" cx="60" cy="60" r="50"></circle>
-                                <circle class="circle-fill" cx="60" cy="60" r="50" id="fat-progress"></circle>
+                            <svg width="140" height="140">
+                                <circle class="circle-bg" cx="70" cy="70" r="60"></circle>
+                                <circle class="circle-fill" cx="70" cy="70" r="60" id="fat-progress"></circle>
                             </svg>
                             <div class="progress-text">
                                 <span class="progress-value" id="current-fat">0</span>
@@ -875,27 +1066,23 @@
 
         <!-- Find & Add Foods -->
         <div class="card">
-            <div class="card-header">🔍 Find & Add Foods</div>
+            <div class="card-header">Find & Add Foods</div>
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col col-2">
-                        <button id="barcode-btn" class="btn btn-secondary" style="width: 100%;">
-                            📱 Scan Barcode
-                        </button>
+                        <button id="barcode-btn" class="btn btn-secondary" style="width: 100%;">📱 Scan Barcode</button>
                     </div>
                     <div class="col col-2">
-                        <button id="voice-search-btn" class="btn btn-secondary" style="width: 100%;">
-                            🎤 Voice Search
-                        </button>
+                        <button id="voice-search-btn" class="btn btn-secondary" style="width: 100%;">🎤 Voice Search</button>
                     </div>
                 </div>
                 
                 <div class="form-group">
-                    <input type="text" id="food-search" class="form-control" 
-                           placeholder="Search foods, use voice, or scan barcode...">
-                    <div id="search-suggestions" class="food-list"></div>
+                    <input type="text" id="food-search" class="form-control" placeholder="Search foods, use voice, or scan barcode...">
                 </div>
-
+                
+                <div id="search-suggestions" class="food-list"></div>
+                
                 <div class="row mb-3">
                     <div class="col">
                         <button class="btn btn-sm btn-secondary" data-filter="all">All Sources</button>
@@ -906,7 +1093,7 @@
                     </div>
                 </div>
 
-                <h4 style="color: var(--text-primary); margin-bottom: 1rem;">Quick Add Categories</h4>
+                <h4 style="color: var(--color-text); margin-bottom: 1rem;">Quick Add Categories</h4>
                 <div class="category-grid">
                     <div class="category-btn" data-category="fruits">
                         <span class="emoji">🍎</span>
@@ -929,15 +1116,15 @@
                         <span class="label">Dairy</span>
                     </div>
                     <div class="category-btn" data-category="snacks">
-                        <span class="emoji">🍪</span>
+                        <span class="emoji">🥜</span>
                         <span class="label">Snacks</span>
                     </div>
                     <div class="category-btn" data-category="beverages">
-                        <span class="emoji">🥤</span>
+                        <span class="emoji">☕</span>
                         <span class="label">Beverages</span>
                     </div>
                     <div class="category-btn" data-category="indian">
-                        <span class="emoji">🇮🇳</span>
+                        <span class="emoji">🍛</span>
                         <span class="label">Indian</span>
                     </div>
                 </div>
@@ -951,7 +1138,7 @@
 
         <!-- Your Meal -->
         <div class="card">
-            <div class="card-header">🍽️ Your Meal</div>
+            <div class="card-header">Your Meal</div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table">
@@ -968,9 +1155,7 @@
                         </thead>
                         <tbody id="meal-table">
                             <tr>
-                                <td colspan="7" class="text-center text-muted">
-                                    No items added yet. Search, use voice, or scan to add foods.
-                                </td>
+                                <td colspan="7" class="text-center text-muted">No items added yet. Search, use voice, or scan to add foods.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -980,29 +1165,29 @@
 
         <!-- Nutrition Totals -->
         <div class="card">
-            <div class="card-header">📊 Nutrition Totals</div>
+            <div class="card-header">Nutrition Totals</div>
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <span>Calories:</span>
-                        <span class="text-danger" style="float: right; font-weight: bold;" id="total-calories">0</span>
+                        <span>Calories</span>
+                        <span class="text-primary" style="float: right; font-weight: bold;" id="total-calories">0</span>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col">
-                        <span>Protein:</span>
+                        <span>Protein</span>
                         <span class="text-success" style="float: right; font-weight: bold;" id="total-protein">0.0g</span>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col">
-                        <span>Carbs:</span>
-                        <span style="color: var(--accent-color); float: right; font-weight: bold;" id="total-carbs">0.0g</span>
+                        <span>Carbs</span>
+                        <span class="text-primary" style="float: right; font-weight: bold;" id="total-carbs">0.0g</span>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col">
-                        <span>Fat:</span>
+                        <span>Fat</span>
                         <span class="text-warning" style="float: right; font-weight: bold;" id="total-fat">0.0g</span>
                     </div>
                 </div>
@@ -1011,40 +1196,28 @@
 
         <!-- Quick Actions -->
         <div class="card">
-            <div class="card-header">⚡ Quick Actions</div>
+            <div class="card-header">Quick Actions</div>
             <div class="card-body">
                 <div class="row">
                     <div class="col col-2">
-                        <button id="add-custom-food-btn" class="btn btn-secondary" style="width: 100%;">
-                            ➕ Add Custom Food
-                        </button>
+                        <button id="add-custom-food-btn" class="btn btn-secondary" style="width: 100%;">Add Custom Food</button>
                     </div>
                     <div class="col col-2">
-                        <button id="import-meal-btn" class="btn btn-secondary" style="width: 100%;">
-                            📥 Import Meal
-                        </button>
+                        <button id="import-meal-btn" class="btn btn-secondary" style="width: 100%;">Import Meal</button>
                     </div>
                 </div>
                 <div class="row mt-2">
                     <div class="col col-4">
-                        <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width: 100%;">
-                            📄 PDF
-                        </button>
+                        <button id="export-pdf-btn" class="btn btn-sm btn-secondary" style="width: 100%;">PDF</button>
                     </div>
                     <div class="col col-4">
-                        <button id="copy-meal-btn" class="btn btn-sm btn-secondary" style="width: 100%;">
-                            📋 Copy
-                        </button>
+                        <button id="copy-meal-btn" class="btn btn-sm btn-secondary" style="width: 100%;">Copy</button>
                     </div>
                     <div class="col col-4">
-                        <button id="export-json-btn" class="btn btn-sm btn-secondary" style="width: 100%;">
-                            💾 Export JSON
-                        </button>
+                        <button id="export-json-btn" class="btn btn-sm btn-secondary" style="width: 100%;">Export JSON</button>
                     </div>
                     <div class="col">
-                        <button id="clear-meal-btn" class="btn btn-danger" style="width: 100%; margin-top: 0.5rem;">
-                            🗑️ Clear Meal
-                        </button>
+                        <button id="clear-meal-btn" class="btn btn-danger" style="width: 100%; margin-top: 0.5rem;">Clear Meal</button>
                     </div>
                 </div>
             </div>
@@ -1055,22 +1228,22 @@
     <div id="barcode-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">📱 Barcode Scanner - Fixed</h3>
+                <h3 class="modal-title">Barcode Scanner</h3>
                 <button class="modal-close" id="close-barcode">&times;</button>
             </div>
             <div id="barcode-scanner"></div>
             <div class="text-center mt-3">
                 <p class="text-muted">Point camera at barcode</p>
-                <div class="row">
-                    <div class="col col-3">
-                        <button id="switch-camera-btn" class="btn btn-sm btn-secondary">📷 Switch Camera</button>
-                    </div>
-                    <div class="col col-3">
-                        <button id="flashlight-btn" class="btn btn-sm btn-secondary">💡 Flashlight</button>
-                    </div>
-                    <div class="col col-3">
-                        <button id="manual-entry-btn" class="btn btn-sm btn-secondary">⌨️ Manual Entry</button>
-                    </div>
+            </div>
+            <div class="row">
+                <div class="col col-3">
+                    <button id="switch-camera-btn" class="btn btn-sm btn-secondary">Switch Camera</button>
+                </div>
+                <div class="col col-3">
+                    <button id="flashlight-btn" class="btn btn-sm btn-secondary">Flashlight</button>
+                </div>
+                <div class="col col-3">
+                    <button id="manual-entry-btn" class="btn btn-sm btn-secondary">Manual Entry</button>
                 </div>
             </div>
         </div>
@@ -1157,7 +1330,7 @@
                 <button class="modal-close" id="close-import">&times;</button>
             </div>
             <div class="form-group">
-                <label class="form-label">Paste JSON data:</label>
+                <label class="form-label">Paste JSON data</label>
                 <textarea id="import-data" class="form-control" rows="8" placeholder='[{"name":"Apple","calories":52,"protein":0.3...}]'></textarea>
             </div>
             <div class="row">
