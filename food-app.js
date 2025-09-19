@@ -1419,11 +1419,12 @@ function updateProgressCircle(nutrient, current, target) {
         remainingEl.textContent = `${Math.round(remaining * 10) / 10}g remaining`;
     }
     
-    // Update progress circle
-    const circumference = 2 * Math.PI * 60; // radius = 60
-    const offset = circumference - (percentage / 100) * circumference;
-    progressEl.style.strokeDashoffset = offset;
-    
+    // Update progress circle  
+const circumference = 377; // 2 * π * 60 (circumference)
+const offset = circumference - (percentage / 100) * circumference;
+progressEl.style.strokeDashoffset = offset;
+progressEl.style.strokeDasharray = circumference;
+
     // Color coding
     if (percentage >= 100) {
         progressEl.style.stroke = '#28a745'; // green when complete
