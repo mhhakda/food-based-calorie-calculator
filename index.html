@@ -411,22 +411,32 @@
             margin: 0 auto var(--space-16);
         }
 
-       .progress-circle svg {
+     .progress-circle svg {
     transform: rotate(-90deg);
     width: 100%;
     height: 100%;
 }
+
+.progress-circle {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto var(--space-16);
+}
+
 
 .circle-fill {
     fill: none;
     stroke: var(--color-primary);
     stroke-width: 8;
     stroke-linecap: round;
-    stroke-dasharray: 377; /* 2 * π * 60 = 377 */
+    stroke-dasharray: 377;
     stroke-dashoffset: 377;
     transition: stroke-dashoffset 0.8s var(--ease-standard);
-    transform-origin: center;
+    transform: rotate(0deg);
+    transform-origin: 50% 50%;
 }
+
 
 
         .circle-bg {
